@@ -26,6 +26,12 @@ The minjsonrpc (Minimal JSON-RPC) implements a simple JSON-RPC service with the 
 
 You need to use some suitable transport protocol with this library to actually provide a working JSON-RPC service.
 
+Features:
+- Supports JSON-RPC v2.0 and v1.x style calls with the exception of v1.0 class-hinting.
+- Easy to use.
+- Small size.
+- Well tested with nose.
+
 Example:
 
     import minjsonrpc

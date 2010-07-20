@@ -1,0 +1,47 @@
+The minjsonrpc (Minimal JSON-RPC) implements a simple JSON-RPC service with the exception of a transport layer.
+
+You need to use some suitable transport protocol with this library to actually provide a working JSON-RPC service.
+
+Features:
+- Supports JSON-RPC v2.0 and v1.x style calls with the exception of v1.0 class-hinting.
+- Easy to use.
+- Small size.
+- Well tested with nose.
+
+Example:
+
+    import minjsonrpc
+    
+    chat_service = minjsonrpc.JSONRPCService()
+    
+    @chat_service()
+    def login(username, password):
+        (...)
+        return True
+    
+    # Adds the method receive_message to the service as a 'recv_msg'.
+    @chat_service('recv_msg')
+    def receive_message(**kwargs):
+        (...)
+        return chat_message
+    
+    def send_message(msg):
+        (...)
+        
+    if __name__ == '__main__':
+    
+        # Alternate way of adding remote methods
+        # Add the method send_message as a 'send_msg' to the service.
+        chat_service.add(send_message, 'send_msg')
+        
+        (...)
+        
+        # Receive a JSON-RPC call.
+        jsonrpc_call = my_socket.recv()
+        
+        # Process the JSON-RPC call.
+        result = chat_service.call(jsonrpc_call)
+        
+        # Send back results.
+        my_socket.send(result)
+
