@@ -75,38 +75,13 @@ import sys
 from functools import wraps
 
 # JSON library importing
-cjson = None
-json = None
 try:
-    import cjson
+    import json
 except ImportError:
-    pass
-if not cjson:
-    try:
-        import json
-    except ImportError:
-        pass
-if not cjson and not json: 
     try:
         import simplejson as json
     except ImportError:
-        raise ImportError('You must have a cjson, json, or simplejson module available.')
-
-# JSON abstractions
-def dumps(obj, encoding='utf-8'):
-    global cjson
-    if cjson:
-        return cjson.encode(obj)
-    else:
-        return json.dumps(obj, encoding=encoding)
-
-def loads(json_string):
-    global cjson
-    if cjson:
-        return cjson.decode(json_string)
-    else:
-        return json.loads(json_string)
-
+        raise ImportError('Your system has no json (included in Python v2.6 or later) or simplejson module available.')
 
 DEFAULT_JSONRPC = '2.0'
 
