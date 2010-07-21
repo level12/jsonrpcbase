@@ -71,12 +71,44 @@ Example:
         # Send back results.
         my_socket.send(result)
 """
-
+import sys
 from functools import wraps
-import json
+
+# JSON library importing
+cjson = None
+json = None
+try:
+    import cjson
+except ImportError:
+    pass
+if not cjson:
+    try:
+        import json
+    except ImportError:
+        pass
+if not cjson and not json: 
+    try:
+        import simplejson as json
+    except ImportError:
+        raise ImportError('You must have a cjson, json, or simplejson module available.')
+
+# JSON abstractions
+def dumps(obj, encoding='utf-8'):
+    global cjson
+    if cjson:
+        return cjson.encode(obj)
+    else:
+        return json.dumps(obj, encoding=encoding)
+
+def loads(json_string):
+    global cjson
+    if cjson:
+        return cjson.decode(json_string)
+    else:
+        return json.loads(json_string)
+
 
 DEFAULT_JSONRPC = '2.0'
-
 
 class JSONRPCService(object):
     """
@@ -85,20 +117,21 @@ class JSONRPCService(object):
     
     def __init__(self):
         self.methods = {}
+    
+    if sys.version_info >= (2, 4):
+        def __call__(self, name=None):
+            """
+            Decorator function for adding remote methods.
+            """
+            def decorator(f):
+                @wraps(f)
+                def wrapper(*args, **kwargs):
+                    return f(*args, **kwargs)
         
-    def __call__(self, name=None):
-        """
-        Decorator function for adding remote methods.
-        """
-        def decorator(f):
-            @wraps(f)
-            def wrapper(*args, **kwargs):
-                return f(*args, **kwargs)
-    
-            self.add(f, name)
-    
-            return wrapper
-        return decorator
+                self.add(f, name)
+        
+                return wrapper
+            return decorator
 
     def add(self, f, name=None):
         """
@@ -124,7 +157,7 @@ class JSONRPCService(object):
         Arguments:
         jsondata -- remote method call in jsonrpc format
         """
-        return json.dumps(self.call_py(jsondata))
+        return dumps(self.call_py(jsondata))
 
     def call_py(self, jsondata):
         """
@@ -135,7 +168,7 @@ class JSONRPCService(object):
         """
         try:
             try:
-                rdata = json.loads(jsondata)
+                rdata = loads(jsondata)
             except ValueError:
                 raise ParseError
         except ParseError, e:
