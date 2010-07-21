@@ -1,18 +1,20 @@
-The minjsonrpc (Minimal JSON-RPC) implements a simple JSON-RPC service with the exception of a transport layer.
+The jsonrpcbase implements a simple JSON-RPC service with the exception of a transport layer.
 
-You need to use some suitable transport protocol with this library to actually provide a working JSON-RPC service.
+This library is intended as an auxiliary library for easy an implementation of JSON-RPC services with Unix/TCP socket 
+like transport protocols that do not have complex special requirements. You need to utilize some suitable transport 
+protocol with this library to actually provide a working JSON-RPC service.
 
 Features:
-- Supports JSON-RPC v2.0 and v1.x style calls with the exception of v1.0 class-hinting.
+- Supports JSON-RPC v2.0. Compatible with v1.x style calls with the exception of v1.0 class-hinting.
 - Easy to use.
 - Small size.
-- Well tested with nose.
+- Well tested.
 
 Example:
 
-    import minjsonrpc
+    import jsonrpcbase
     
-    chat_service = minjsonrpc.JSONRPCService()
+    chat_service = jsonrpcbase.JSONRPCServiceBase()
     
     @chat_service()
     def login(username, password):
@@ -44,4 +46,3 @@ Example:
         
         # Send back results.
         my_socket.send(result)
-
