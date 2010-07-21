@@ -38,7 +38,7 @@ Example:
 
     import jsonrpcbase
     
-    chat_service = jsonrpcbase.JSONRPCServiceBase()
+    chat_service = jsonrpcbase.JSONRPCService()
     
     @chat_service()
     def login(username, password):
@@ -70,7 +70,6 @@ Example:
         
         # Send back results.
         my_socket.send(result)
-    
 """
 
 from functools import wraps
@@ -79,7 +78,7 @@ import json
 DEFAULT_JSONRPC = '2.0'
 
 
-class JSONRPCServiceBase(object):
+class JSONRPCService(object):
     """
     The JSONRPCServiceBase class is a JSON-RPC
     """

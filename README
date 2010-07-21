@@ -14,7 +14,7 @@ Example:
 
     import jsonrpcbase
     
-    chat_service = jsonrpcbase.JSONRPCServiceBase()
+    chat_service = jsonrpcbase.JSONRPCService()
     
     @chat_service()
     def login(username, password):

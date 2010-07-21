@@ -5,7 +5,7 @@ jsonrpcbase tests
 import jsonrpcbase
 from nose.tools import *
 
-test_service = jsonrpcbase.JSONRPCServiceBase()
+test_service = jsonrpcbase.JSONRPCService()
 
 @test_service()
 def subtract(a, b):
