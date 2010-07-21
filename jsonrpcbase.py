@@ -80,7 +80,7 @@ DEFAULT_JSONRPC = '2.0'
 
 class JSONRPCService(object):
     """
-    The JSONRPCServiceBase class is a JSON-RPC
+    The JSONRPCService class is a JSON-RPC
     """
     
     def __init__(self):
