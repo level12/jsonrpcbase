@@ -22,21 +22,23 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 """
-The minjsonrpc (Minimal JSON-RPC) implements a simple JSON-RPC service with the exception of a transport layer.
+The jsonrpcbase implements a simple JSON-RPC service with the exception of a transport layer.
 
-You need to use some suitable transport protocol with this library to actually provide a working JSON-RPC service.
+This library is intended as an auxiliary library for easy an implementation of JSON-RPC services with Unix/TCP socket 
+like transport protocols that do not have complex special requirements. You need to utilize some suitable transport 
+protocol with this library to actually provide a working JSON-RPC service.
 
 Features:
-- Supports JSON-RPC v2.0 and v1.x style calls with the exception of v1.0 class-hinting.
+- Supports JSON-RPC v2.0. Compatible with v1.x style calls with the exception of v1.0 class-hinting.
 - Easy to use.
 - Small size.
-- Well tested with nose.
+- Well tested.
 
 Example:
 
-    import minjsonrpc
+    import jsonrpcbase
     
-    chat_service = minjsonrpc.JSONRPCService()
+    chat_service = jsonrpcbase.JSONRPCServiceBase()
     
     @chat_service()
     def login(username, password):
@@ -77,9 +79,9 @@ import json
 DEFAULT_JSONRPC = '2.0'
 
 
-class JSONRPCService(object):
+class JSONRPCServiceBase(object):
     """
-    The JSONRPCService class is a JSON-RPC
+    The JSONRPCServiceBase class is a JSON-RPC
     """
     
     def __init__(self):
@@ -196,7 +198,7 @@ class JSONRPCService(object):
             else:
                 # empty dict, list or wrong type
                 raise InvalidRequestError
-            
+        
         except InvalidRequestError, e:
             return self._get_err(e, request['id'])
         except JSONRPCError, e:
@@ -206,28 +208,35 @@ class JSONRPCService(object):
         """
         Returns jsonrpc error message.
         """
-        # only respond to notifications when the request is invalid.
-        if not id and not isinstance(e, ParseError)  and not isinstance(e, InvalidRequestError):
+        # Do not respond to notifications when the request is valid.
+        if not id and not isinstance(e, ParseError) and not isinstance(e, InvalidRequestError):
             return None
         
-        respond = {'id': id, 'error': e.dumps()}
-         
+        respond = {'id': id}
+        
         if isinstance(jsonrpc, int):
-            respond['jsonrpc'] = self._iver2sver(jsonrpc)
+            # v1.0 requires result to exist always.
+            # No error codes are defined in v1.0 so only use the message.
+            if jsonrpc == 10:
+                respond['result'] = None
+                respond['error'] = e.dumps()['message']
+            else:
+                self._fill_ver(jsonrpc, respond)
+                respond['error'] = e.dumps()
         else:
             respond['jsonrpc'] = jsonrpc
+            respond['error'] = e.dumps()
         
         return respond
 
-    def _iver2sver(self, jsonrpc):
+    def _fill_ver(self, iver, respond):
         """
-        Returns string formatted jsonrpc version element from an integer formatted version.
+        Fills version information to the respond from the internal integer version.
         """
-        if jsonrpc == 20:
-            return '2.0'
-        
-        # This should not happen.
-        raise InternalError
+        if iver == 20:
+            respond['jsonrpc'] = '2.0'
+        if iver == 11:
+            respond['version'] = '1.1'
 
     def _man_args(self, f):
         """
@@ -340,7 +349,7 @@ class JSONRPCService(object):
                 
                 # Do not accept keyword arguments if the jsonrpc version is not >=1.1.
                 if request['jsonrpc'] < 11:
-                    raise InvalidRequestError
+                    raise KeywordError
 
                 return method(**params)
             elif params is None:
@@ -365,7 +374,7 @@ class JSONRPCService(object):
             return None
 
         respond = {}
-        respond['jsonrpc'] = DEFAULT_JSONRPC
+        self._fill_ver(request['jsonrpc'], respond)
         respond['result'] = result
         respond['id'] = request['id']
 
@@ -416,38 +425,43 @@ class JSONRPCError(Exception):
 #===============================================================================
 
 class ParseError(JSONRPCError):
-    """Invalid JSON. An error occurred on the server while parsing the JSON text. """
+    """Invalid JSON. An error occurred on the server while parsing the JSON text."""
     code = -32700
     message = 'Parse error'
 
 
 class InvalidRequestError(JSONRPCError):
-    """The received JSON is not a valid JSON-RPC Request. """
+    """The received JSON is not a valid JSON-RPC Request."""
     code = -32600
     message = 'Invalid request'
 
 
 class MethodNotFoundError(JSONRPCError):
-    """The requested remote-procedure does not exist / is not available. """
+    """The requested remote-procedure does not exist / is not available."""
     code = -32601
     message = 'Method not found'
 
 
 class InvalidParamsError(JSONRPCError):
-    """Invalid method parameters. """
+    """Invalid method parameters."""
     code = -32602
     message = 'Invalid params'
 
 
 class InternalError(JSONRPCError):
-    """Internal JSON-RPC error. """
+    """Internal JSON-RPC error."""
     code = -32603
     message = 'Internal error'
 
 # -32099..-32000 Server error. Reserved for implementation-defined server-errors.
 
-
+class KeywordError(JSONRPCError):
+    """The received JSON-RPC request is trying to use keyword arguments even tough its version is 1.0."""
+    code = -32099
+    message = 'Keyword argument error'
+    
+    
 class ServerError(JSONRPCError):
-    """Generic server error. """
+    """Generic server error."""
     code = -32000
     message = 'Server error'
