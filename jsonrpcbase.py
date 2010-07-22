@@ -132,7 +132,7 @@ class JSONRPCService(object):
         Arguments:
         jsondata -- remote method call in jsonrpc format
         """
-        return dumps(self.call_py(jsondata))
+        return json.dumps(self.call_py(jsondata))
 
     def call_py(self, jsondata):
         """
@@ -143,7 +143,7 @@ class JSONRPCService(object):
         """
         try:
             try:
-                rdata = loads(jsondata)
+                rdata = json.loads(jsondata)
             except ValueError:
                 raise ParseError
         except ParseError, e:
