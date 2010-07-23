@@ -132,7 +132,11 @@ class JSONRPCService(object):
         Arguments:
         jsondata -- remote method call in jsonrpc format
         """
-        return json.dumps(self.call_py(jsondata))
+        result = self.call_py(jsondata)
+        if result != None:
+            return json.dumps(result)
+        
+        return None
 
     def call_py(self, jsondata):
         """
