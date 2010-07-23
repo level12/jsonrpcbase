@@ -344,12 +344,13 @@ class JSONRPCService(object):
         """Calls given method with given params and returns it value."""
         method = request['method']
         params = request['params']
+        result = None
         try:
             if isinstance(params, list):
                 if self._man_args(method) > len(params) <= self._max_args(method):
                     raise InvalidParamsError
 
-                return method(*params)
+                result = method(*params)
             elif isinstance(params, dict):
                 if self._man_args(method) > len(params) <= self._max_args(method):
                     raise InvalidParamsError
@@ -358,12 +359,12 @@ class JSONRPCService(object):
                 if request['jsonrpc'] < 11:
                     raise KeywordError
 
-                return method(**params)
+                result = method(**params)
             elif params is None:
                 if self._man_args(method) > 0:
                     raise InvalidParamsError
 
-                return method()
+                result = method()
             else:
                 raise InvalidParamsError
         except JSONRPCError:
@@ -371,6 +372,8 @@ class JSONRPCService(object):
         except Exception:
             # Exception was raised inside the method.
             raise ServerError
+        
+        return result
 
     def _handle_request(self, request):
         """Handles given request and returns its response."""

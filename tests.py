@@ -74,6 +74,16 @@ def test_no_args():
     assert_equal(result['jsonrpc'], jsonrpcbase.DEFAULT_JSONRPC)
     assert_equal(result['result'], "Hello world!")
     assert_equal(result['id'], "1")
+    
+def test_empty_return():
+    """
+    Test valid jsonrpc empty return calls.
+    """
+    result = test_service.call_py('{"jsonrpc": "2.0", "method": "noop", "params": [1,2,3,4,5], "id":3}')
+    
+    assert_equal(result['jsonrpc'], jsonrpcbase.DEFAULT_JSONRPC)
+    assert_equal(result['result'], None)
+    assert_equal(result['id'], 3)
 
 def test_notification():
     """
