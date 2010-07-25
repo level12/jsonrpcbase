@@ -22,7 +22,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 """
-The jsonrpcbase implements a simple JSON-RPC service with the exception of a transport layer.
+Simple JSON-RPC service without transport layer
 
 This library is intended as an auxiliary library for easy an implementation of JSON-RPC services with Unix/TCP socket 
 like transport protocols that do not have complex special requirements. You need to utilize some suitable transport 
