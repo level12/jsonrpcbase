@@ -5,10 +5,9 @@ like transport protocols that do not have complex special requirements. You need
 protocol with this library to actually provide a working JSON-RPC service.
 
 Features:
+- Easy to use, small size, well tested.
 - Supports JSON-RPC v2.0. Compatible with v1.x style calls with the exception of v1.0 class-hinting.
-- Easy to use.
-- Small size.
-- Well tested.
+- Optional argument type validation that significantly eases development of jsonrpc methods.
 
 Example:
 
@@ -16,13 +15,13 @@ Example:
     
     chat_service = jsonrpcbase.JSONRPCService()
     
-    @chat_service()
-    def login(username, password):
+    @chat_service(schema=[basestring, basestring, int])
+    def login(username, password, timelimit=0):
         (...)
         return True
     
     # Adds the method receive_message to the service as a 'recv_msg'.
-    @chat_service('recv_msg')
+    @chat_service('recv_msg', schema={"msg": basestring, "id": int})
     def receive_message(**kwargs):
         (...)
         return chat_message

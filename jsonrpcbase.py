@@ -29,10 +29,9 @@ like transport protocols that do not have complex special requirements. You need
 protocol with this library to actually provide a working JSON-RPC service.
 
 Features:
+- Easy to use, small size, well tested.
 - Supports JSON-RPC v2.0. Compatible with v1.x style calls with the exception of v1.0 class-hinting.
-- Easy to use.
-- Small size.
-- Well tested.
+- Optional argument type validation that significantly eases development of jsonrpc methods.
 
 Example:
 
@@ -40,13 +39,13 @@ Example:
     
     chat_service = jsonrpcbase.JSONRPCService()
     
-    @chat_service()
-    def login(username, password):
+    @chat_service(schema=[basestring, basestring, int])
+    def login(username, password, timelimit=0):
         (...)
         return True
     
     # Adds the method receive_message to the service as a 'recv_msg'.
-    @chat_service('recv_msg')
+    @chat_service('recv_msg', schema={"msg": basestring, "id": int})
     def receive_message(**kwargs):
         (...)
         return chat_message
@@ -92,9 +91,10 @@ class JSONRPCService(object):
     
     def __init__(self):
         self.methods = {}
+        self._schemas = {}
     
     if sys.version_info >= (2, 4):
-        def __call__(self, name=None):
+        def __call__(self, name=None, schema=None):
             """
             Decorator function for adding remote methods.
             """
@@ -103,12 +103,12 @@ class JSONRPCService(object):
                 def wrapper(*args, **kwargs):
                     return f(*args, **kwargs)
         
-                self.add(f, name)
+                self.add(f, name, schema)
         
                 return wrapper
             return decorator
 
-    def add(self, f, name=None):
+    def add(self, f, name=None, schema=None):
         """
         Adds a new method to the jsonrpc service.
         
@@ -124,6 +124,9 @@ class JSONRPCService(object):
             fname = name
 
         self.methods[fname] = f
+        
+        if schema is not None:
+            self._schemas[fname] = schema
         
     def call(self, jsondata):
         """
@@ -248,6 +251,15 @@ class JSONRPCService(object):
             respond['jsonrpc'] = '2.0'
         if iver == 11:
             respond['version'] = '1.1'
+            
+    def _vargs(self, f):
+        """
+        Returns True if given function accepts variadic positional arguments, otherwise False.
+        """
+        if f.func_code.co_flags&4:
+            return True
+
+        return False
 
     def _man_args(self, f):
         """
@@ -273,19 +285,17 @@ class JSONRPCService(object):
 
         InvalidRequestError will be raised if the jsonrpc value has invalid value.
         """
-        try:
+        if rdata.has_key('jsonrpc'):
             if rdata['jsonrpc'] == '2.0':
                 return 20
             else:
                 # invalid version
                 raise InvalidRequestError
-        except (TypeError, KeyError):
+        else:
             # It's probably a JSON-RPC v1.x style call.
-            try:
+            if rdata.has_key('version'):
                 if rdata['version'] == '1.1':
                     return 11
-            except (TypeError, KeyError):
-                pass
         
         # Assume v1.0.
         return 10
@@ -296,7 +306,7 @@ class JSONRPCService(object):
 
         InvalidRequestError will be raised if the id value has invalid type.
         """
-        try:
+        if rdata.has_key('id'):
             if isinstance(rdata['id'], basestring) or \
             isinstance(rdata['id'], int) or \
             isinstance(rdata['id'], long) or \
@@ -306,7 +316,7 @@ class JSONRPCService(object):
             else:
                 # invalid type
                 raise InvalidRequestError
-        except (TypeError, KeyError):
+        else:
             # It's a notification.
             return None
 
@@ -317,28 +327,35 @@ class JSONRPCService(object):
         InvalidRequestError will be raised if it's missing or is wrong type.
         MethodNotFoundError will be raised if a method with given method name does not exist.
         """
-        try:
+        if rdata.has_key('method'):
             if not isinstance(rdata['method'], basestring):
                 raise InvalidRequestError
-        except (TypeError, KeyError):
+        else:
             raise InvalidRequestError
 
         if rdata['method'] not in self.methods.keys():
             raise MethodNotFoundError
 
-        return self.methods[rdata['method']]
+        return rdata['method']
 
     def _get_params(self, rdata):
         """
         Returns a list of jsonrpc request's method parameters.
         """
-        try:
-            return rdata['params']
-        except KeyError:
+        if rdata.has_key('params'):
+            if isinstance(rdata['params'], dict) or isinstance(rdata['params'], list) or rdata['params'] is None:
+                return rdata['params']
+            else:
+                # wrong type
+                raise InvalidRequestError
+        else:
             return None
 
     def _fill_request(self, request, rdata):
         """Fills request with data from the jsonrpc call."""
+        if not isinstance(rdata, dict):
+            raise InvalidRequestError
+        
         request['jsonrpc'] = self._get_jsonrpc(rdata)
         request['id'] = self._get_id(rdata)
         request['method'] = self._get_method(rdata)
@@ -346,31 +363,27 @@ class JSONRPCService(object):
 
     def _call_method(self, request):
         """Calls given method with given params and returns it value."""
-        method = request['method']
+        method = self.methods[request['method']]
         params = request['params']
         result = None
         try:
             if isinstance(params, list):
-                if self._man_args(method) > len(params) <= self._max_args(method):
+                # Does it have enough arguments?
+                if len(params) < self._man_args(method):
                     raise InvalidParamsError
-
+                # Does it have too many arguments?
+                if not self._vargs(method) and len(params) > self._max_args(method):
+                    raise InvalidParamsError 
+                
                 result = method(*params)
             elif isinstance(params, dict):
-                if self._man_args(method) > len(params) <= self._max_args(method):
-                    raise InvalidParamsError
-                
                 # Do not accept keyword arguments if the jsonrpc version is not >=1.1.
                 if request['jsonrpc'] < 11:
                     raise KeywordError
 
                 result = method(**params)
-            elif params is None:
-                if self._man_args(method) > 0:
-                    raise InvalidParamsError
-
+            else: # No params
                 result = method()
-            else:
-                raise InvalidParamsError
         except JSONRPCError:
             raise
         except Exception:
@@ -381,10 +394,13 @@ class JSONRPCService(object):
 
     def _handle_request(self, request):
         """Handles given request and returns its response."""
+        if self._schemas.has_key(request['method']):
+            self._validate_params_types(request['method'], request['params'])
+        
         result = self._call_method(request)
 
         # Do not respond to notifications.
-        if not request['id']:
+        if request['id'] is None:
             return None
 
         respond = {}
@@ -395,9 +411,30 @@ class JSONRPCService(object):
         return respond
 
     def _get_default_vals(self):
-        """Returns dictionary containing default jsonrpc request/responds values for error handling purposes."""
+        """
+        Returns dictionary containing default jsonrpc request/responds values for error handling purposes.
+        """
         return {"jsonrpc": DEFAULT_JSONRPC, "id": None}
-
+    
+    def _validate_params_types(self, method, params):
+        """
+        Validates request's parameter types.
+        """
+        if isinstance(params, list):
+            if not isinstance(self._schemas[method], list):
+                raise InvalidParamsError
+            
+            for param, type in zip(params, self._schemas[method]):
+                if not isinstance(param, type):
+                    raise InvalidParamsError
+        elif isinstance(params, dict):
+            if not isinstance(self._schemas[method], dict):
+                raise InvalidParamsError
+            
+            for key in params.keys():
+                if not self._schemas[method].has_key(key) or not isinstance(params[key], self._schemas[method][key]):
+                    raise InvalidParamsError
+            
 
 class JSONRPCError(Exception):
     """
