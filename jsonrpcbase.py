@@ -31,7 +31,7 @@ protocol with this library to actually provide a working JSON-RPC service.
 Features:
 - Easy to use, small size, well tested.
 - Supports JSON-RPC v2.0. Compatible with v1.x style calls with the exception of v1.0 class-hinting.
-- Optional argument type validation that significantly eases development of jsonrpc methods.
+- Optional argument type validation that significantly eases development of jsonrpc method_data.
 
 Example:
 
@@ -55,7 +55,7 @@ Example:
         
     if __name__ == '__main__':
     
-        # Alternate way of adding remote methods
+        # Alternate way of adding remote method_data
         # Add the method send_message as a 'send_msg' to the service.
         chat_service.add(send_message, 'send_msg')
         
@@ -90,43 +90,55 @@ class JSONRPCService(object):
     """
     
     def __init__(self):
-        self.methods = {}
-        self._schemas = {}
+        self.method_data = {}
     
     if sys.version_info >= (2, 4):
-        def __call__(self, name=None, schema=None):
+        def __call__(self, name=None, types=None, required=None):
             """
-            Decorator function for adding remote methods.
+            Decorator function for adding remote method_data.
+            
+            See method add() for more details.
             """
             def decorator(f):
                 @wraps(f)
                 def wrapper(*args, **kwargs):
                     return f(*args, **kwargs)
         
-                self.add(f, name, schema)
+                self.add(f, name, types, required)
         
                 return wrapper
             return decorator
 
-    def add(self, f, name=None, schema=None):
+    def add(self, f, name=None, types=None, required=None):
         """
         Adds a new method to the jsonrpc service.
         
         Arguments:
         f -- the remote function
         name -- name of the method in the jsonrpc service
+        types -- list or dictionary of the types of accepted arguments
+        required -- list of required keyword arguments
         
         If name argument is not given, function's own name will be used.
+        
+        Argument types must be a list if positional arguments are used or a dictionary if keyword arguments are used 
+        in the method in question.
+        
+        Argument required MUST be used only for methods requiring keyword arguments, not for methods accepting 
+        positional arguments.
         """
         if name is None:
             fname = f.__name__  # Register the function using its own name.
         else:
             fname = name
 
-        self.methods[fname] = f
+        self.method_data[fname] = {'method': f}
         
-        if schema is not None:
-            self._schemas[fname] = schema
+        if types is not None:
+            self.method_data[fname]['types'] = types
+            
+            if required is not None:
+                self.method_data[fname]['required'] = required
         
     def call(self, jsondata):
         """
@@ -333,7 +345,7 @@ class JSONRPCService(object):
         else:
             raise InvalidRequestError
 
-        if rdata['method'] not in self.methods.keys():
+        if rdata['method'] not in self.method_data.keys():
             raise MethodNotFoundError
 
         return rdata['method']
@@ -363,7 +375,7 @@ class JSONRPCService(object):
 
     def _call_method(self, request):
         """Calls given method with given params and returns it value."""
-        method = self.methods[request['method']]
+        method = self.method_data[request['method']]['method']
         params = request['params']
         result = None
         try:
@@ -394,7 +406,7 @@ class JSONRPCService(object):
 
     def _handle_request(self, request):
         """Handles given request and returns its response."""
-        if self._schemas.has_key(request['method']):
+        if self.method_data[request['method']].has_key('types'):
             self._validate_params_types(request['method'], request['params'])
         
         result = self._call_method(request)
@@ -421,18 +433,24 @@ class JSONRPCService(object):
         Validates request's parameter types.
         """
         if isinstance(params, list):
-            if not isinstance(self._schemas[method], list):
+            if not isinstance(self.method_data[method]['types'], list):
                 raise InvalidParamsError
             
-            for param, type in zip(params, self._schemas[method]):
+            for param, type in zip(params, self.method_data[method]['types']):
                 if not isinstance(param, type):
                     raise InvalidParamsError
         elif isinstance(params, dict):
-            if not isinstance(self._schemas[method], dict):
+            if not isinstance(self.method_data[method]['types'], dict):
                 raise InvalidParamsError
             
+            if self.method_data[method].has_key('required'):
+                for key in self.method_data[method]['required']:
+                    if not params.has_key(key):
+                        raise InvalidParamsError
+            
             for key in params.keys():
-                if not self._schemas[method].has_key(key) or not isinstance(params[key], self._schemas[method][key]):
+                if not self.method_data[method]['types'].has_key(key) or \
+                not isinstance(params[key], self.method_data[method]['types'][key]):
                     raise InvalidParamsError
             
 

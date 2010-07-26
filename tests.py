@@ -344,7 +344,7 @@ def test_positional_validation():
     """
     Test validation of positional arguments with valid jsonrpc calls.
     """
-    @test_service(schema=[basestring, int, float, bool, bool, int])
+    @test_service(types=[basestring, int, float, bool, bool, int])
     def posv(a, b, c, d, e, f=6):
         return
     
@@ -359,7 +359,7 @@ def test_positional_validation_error():
     """
     Test error handling of validation of positional arguments with invalid jsonrpc calls.
     """
-    @test_service(schema=[int, bool, float])
+    @test_service(types=[int, bool, float])
     def pose(a, b, c):
         return
     
@@ -375,12 +375,12 @@ def test_keyword_validation():
     """
     Test validation of keyword arguments with valid jsonrpc calls.
     """
-    @test_service(schema={'a':int, 'b': bool, 'c': float})
-    def posv(**kwargs):
+    @test_service(types={'a':int, 'b': bool, 'c': float})
+    def keyv(**kwargs):
         return
     
     result = test_service.call_py('{"jsonrpc": "' + jsonrpcbase.DEFAULT_JSONRPC + 
-                                              '", "method": "posv", "params": {"a": 1, "b": false, "c": 6.0}, "id": "1"}')
+                                              '", "method": "keyv", "params": {"a": 1, "b": false, "c": 6.0}, "id": "1"}')
     
     assert_equal(result['jsonrpc'], jsonrpcbase.DEFAULT_JSONRPC)
     assert_equal(result['result'], None)
@@ -390,13 +390,43 @@ def test_keyword_validation_error():
     """
     Test error handling of validation of keyword arguments with invalid jsonrpc calls.
     """
-    @test_service(schema={'a':int, 'b': bool, 'c': float})
-    def pose(**kwargs):
+    @test_service(types={'a':int, 'b': bool, 'c': float})
+    def keye(**kwargs):
         return
     
     # kwarg 'c' is int, not float.
     result = test_service.call_py('{"jsonrpc": "' + jsonrpcbase.DEFAULT_JSONRPC + 
-                                              '", "method": "posv", "params": {"a": 1, "b": false, "c": 6}, "id": "1"}')
+                                              '", "method": "keye", "params": {"a": 1, "b": false, "c": 6}, "id": "1"}')
+    print result
+    assert_equal(result['jsonrpc'], jsonrpcbase.DEFAULT_JSONRPC)
+    assert_equal(result['error']['code'], -32602)
+    assert_equal(result['id'], "1")
+    
+def test_required_keyword_validation():
+    """
+    Test validation of required keyword arguments with valid jsonrpc calls.
+    """
+    @test_service(types={'a':int, 'b': bool, 'c': float}, required=['a','c'])
+    def reqv(**kwargs):
+        return
+    
+    result = test_service.call_py('{"jsonrpc": "' + jsonrpcbase.DEFAULT_JSONRPC + 
+                                              '", "method": "reqv", "params": {"a": 1, "c": 6.0}, "id": "1"}')
+    
+    assert_equal(result['jsonrpc'], jsonrpcbase.DEFAULT_JSONRPC)
+    assert_equal(result['result'], None)
+    assert_equal(result['id'], "1")
+    
+def test_required_keyword_validation_error():
+    """
+    Test error handling of validation of required keyword arguments with invalid jsonrpc calls.
+    """
+    @test_service(types={'a':int, 'b': bool, 'c': float}, required=['a', 'b', 'c'])
+    def reqe(**kwargs):
+        return
+    
+    result = test_service.call_py('{"jsonrpc": "' + jsonrpcbase.DEFAULT_JSONRPC + 
+                                              '", "method": "reqe", "params": {"a": 1, "c": 6.0}, "id": "1"}')
     print result
     assert_equal(result['jsonrpc'], jsonrpcbase.DEFAULT_JSONRPC)
     assert_equal(result['error']['code'], -32602)
