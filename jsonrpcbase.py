@@ -39,13 +39,10 @@ Example:
     
     chat_service = jsonrpcbase.JSONRPCService()
     
-    @chat_service(schema=[basestring, basestring, int])
     def login(username, password, timelimit=0):
         (...)
         return True
     
-    # Adds the method receive_message to the service as a 'recv_msg'.
-    @chat_service('recv_msg', schema={"msg": basestring, "id": int})
     def receive_message(**kwargs):
         (...)
         return chat_message
@@ -55,17 +52,22 @@ Example:
         
     if __name__ == '__main__':
     
-        # Alternate way of adding remote method_data
-        # Add the method send_message as a 'send_msg' to the service.
+        # Adds the method login to the service as a 'login'.
+        chat_service.add(login, types=[basestring, basestring, int])
+        
+        # Adds the method receive_message to the service as a 'recv_msg'.
+        chat_service.add(receive_message, name='recv_msg', types={"msg": basestring, "id": int})
+        
+        # Adds the method send_message as a 'send_msg' to the service.
         chat_service.add(send_message, 'send_msg')
         
         (...)
         
         # Receive a JSON-RPC call.
-        jsonrpc_call = my_socket.recv()
+        jsonmsg = my_socket.recv()
         
         # Process the JSON-RPC call.
-        result = chat_service.call(jsonrpc_call)
+        result = chat_service.call(jsonmsg)
         
         # Send back results.
         my_socket.send(result)
@@ -91,23 +93,6 @@ class JSONRPCService(object):
     
     def __init__(self):
         self.method_data = {}
-    
-    if sys.version_info >= (2, 4):
-        def __call__(self, name=None, types=None, required=None):
-            """
-            Decorator function for adding remote method_data.
-            
-            See method add() for more details.
-            """
-            def decorator(f):
-                @wraps(f)
-                def wrapper(*args, **kwargs):
-                    return f(*args, **kwargs)
-        
-                self.add(f, name, types, required)
-        
-                return wrapper
-            return decorator
 
     def add(self, f, name=None, types=None, required=None):
         """
