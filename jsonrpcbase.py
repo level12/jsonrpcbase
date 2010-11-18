@@ -422,7 +422,7 @@ class JSONRPCService(object):
                 raise InvalidParamsError
             
             for param, type in zip(params, self.method_data[method]['types']):
-                if not isinstance(param, type):
+                if not (isinstance(param, type) or param is None):
                     raise InvalidParamsError
         elif isinstance(params, dict):
             if not isinstance(self.method_data[method]['types'], dict):
@@ -435,7 +435,8 @@ class JSONRPCService(object):
             
             for key in params.keys():
                 if not self.method_data[method]['types'].has_key(key) or \
-                not isinstance(params[key], self.method_data[method]['types'][key]):
+                not (isinstance(params[key], self.method_data[method]['types'][key]) \
+                or params[key] is None):
                     raise InvalidParamsError
             
 
