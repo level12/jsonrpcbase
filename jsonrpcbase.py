@@ -24,8 +24,8 @@
 """
 Simple JSON-RPC service without transport layer
 
-This library is intended as an auxiliary library for easy an implementation of JSON-RPC services with Unix/TCP socket 
-like transport protocols that do not have complex special requirements. You need to utilize some suitable transport 
+This library is intended as an auxiliary library for easy an implementation of JSON-RPC services with Unix/TCP socket
+like transport protocols that do not have complex special requirements. You need to utilize some suitable transport
 protocol with this library to actually provide a working JSON-RPC service.
 
 Features:
@@ -36,39 +36,39 @@ Features:
 Example:
 
     import jsonrpcbase
-    
+
     chat_service = jsonrpcbase.JSONRPCService()
-    
+
     def login(username, password, timelimit=0):
         (...)
         return True
-    
+
     def receive_message(**kwargs):
         (...)
         return chat_message
-    
+
     def send_message(msg):
         (...)
-        
+
     if __name__ == '__main__':
-    
+
         # Adds the method login to the service as a 'login'.
         chat_service.add(login, types=[basestring, basestring, int])
-        
+
         # Adds the method receive_message to the service as a 'recv_msg'.
         chat_service.add(receive_message, name='recv_msg', types={"msg": basestring, "id": int})
-        
+
         # Adds the method send_message as a 'send_msg' to the service.
         chat_service.add(send_message, 'send_msg')
-        
+
         (...)
-        
+
         # Receive a JSON-RPC call.
         jsonmsg = my_socket.recv()
-        
+
         # Process the JSON-RPC call.
         result = chat_service.call(jsonmsg)
-        
+
         # Send back results.
         my_socket.send(result)
 """
@@ -90,26 +90,26 @@ class JSONRPCService(object):
     """
     The JSONRPCService class is a JSON-RPC
     """
-    
+
     def __init__(self):
         self.method_data = {}
 
     def add(self, f, name=None, types=None, required=None):
         """
         Adds a new method to the jsonrpc service.
-        
+
         Arguments:
         f -- the remote function
         name -- name of the method in the jsonrpc service
         types -- list or dictionary of the types of accepted arguments
         required -- list of required keyword arguments
-        
+
         If name argument is not given, function's own name will be used.
-        
-        Argument types must be a list if positional arguments are used or a dictionary if keyword arguments are used 
+
+        Argument types must be a list if positional arguments are used or a dictionary if keyword arguments are used
         in the method in question.
-        
-        Argument required MUST be used only for methods requiring keyword arguments, not for methods accepting 
+
+        Argument required MUST be used only for methods requiring keyword arguments, not for methods accepting
         positional arguments.
         """
         if name is None:
@@ -118,30 +118,30 @@ class JSONRPCService(object):
             fname = name
 
         self.method_data[fname] = {'method': f}
-        
+
         if types is not None:
             self.method_data[fname]['types'] = types
-            
+
             if required is not None:
                 self.method_data[fname]['required'] = required
-        
+
     def call(self, jsondata):
         """
         Calls jsonrpc service's method and returns its return value in a JSON string or None if there is none.
-        
+
         Arguments:
         jsondata -- remote method call in jsonrpc format
         """
         result = self.call_py(jsondata)
         if result != None:
             return json.dumps(result)
-        
+
         return None
 
     def call_py(self, jsondata):
         """
         Calls jsonrpc service's method and returns its return value in python object format or None if there is none.
-        
+
         This method is same as call() except the return value is a python object instead of JSON string. This method
         is mainly only useful for debugging purposes.
         """
@@ -171,7 +171,7 @@ class JSONRPCService(object):
                 # It's a batch.
                 requests = []
                 responds = []
-                
+
                 for rdata_ in rdata:
                     # set some default values for error handling
                     request_ = self._get_default_vals()
@@ -185,9 +185,9 @@ class JSONRPCService(object):
                                                  request_['id'],
                                                  request_['jsonrpc']))
                         continue
-                    
+
                     requests.append(request_)
-                
+
                 for request_ in requests:
                     try:
                         respond = self._handle_request(request_)
@@ -196,7 +196,7 @@ class JSONRPCService(object):
                                                  request_['id'],
                                                  request_['jsonrpc']))
                         continue
-                    
+
                     # Don't respond to notifications
                     if respond is not None:
                         responds.append(respond)
@@ -209,7 +209,7 @@ class JSONRPCService(object):
             else:
                 # empty dict, list or wrong type
                 raise InvalidRequestError
-        
+
         except InvalidRequestError, e:
             return self._get_err(e, request['id'])
         except JSONRPCError, e:
@@ -222,9 +222,9 @@ class JSONRPCService(object):
         # Do not respond to notifications when the request is valid.
         if not id and not isinstance(e, ParseError) and not isinstance(e, InvalidRequestError):
             return None
-        
+
         respond = {'id': id}
-        
+
         if isinstance(jsonrpc, int):
             # v1.0 requires result to exist always.
             # No error codes are defined in v1.0 so only use the message.
@@ -237,7 +237,7 @@ class JSONRPCService(object):
         else:
             respond['jsonrpc'] = jsonrpc
             respond['error'] = e.dumps()
-        
+
         return respond
 
     def _fill_ver(self, iver, respond):
@@ -248,7 +248,7 @@ class JSONRPCService(object):
             respond['jsonrpc'] = '2.0'
         if iver == 11:
             respond['version'] = '1.1'
-            
+
     def _vargs(self, f):
         """
         Returns True if given function accepts variadic positional arguments, otherwise False.
@@ -293,7 +293,7 @@ class JSONRPCService(object):
             if rdata.has_key('version'):
                 if rdata['version'] == '1.1':
                     return 11
-        
+
         # Assume v1.0.
         return 10
 
@@ -352,7 +352,7 @@ class JSONRPCService(object):
         """Fills request with data from the jsonrpc call."""
         if not isinstance(rdata, dict):
             raise InvalidRequestError
-        
+
         request['jsonrpc'] = self._get_jsonrpc(rdata)
         request['id'] = self._get_id(rdata)
         request['method'] = self._get_method(rdata)
@@ -370,8 +370,8 @@ class JSONRPCService(object):
                     raise InvalidParamsError
                 # Does it have too many arguments?
                 if not self._vargs(method) and len(params) > self._max_args(method):
-                    raise InvalidParamsError 
-                
+                    raise InvalidParamsError
+
                 result = method(*params)
             elif isinstance(params, dict):
                 # Do not accept keyword arguments if the jsonrpc version is not >=1.1.
@@ -386,14 +386,14 @@ class JSONRPCService(object):
         except Exception:
             # Exception was raised inside the method.
             raise ServerError
-        
+
         return result
 
     def _handle_request(self, request):
         """Handles given request and returns its response."""
         if self.method_data[request['method']].has_key('types'):
             self._validate_params_types(request['method'], request['params'])
-        
+
         result = self._call_method(request)
 
         # Do not respond to notifications.
@@ -412,7 +412,7 @@ class JSONRPCService(object):
         Returns dictionary containing default jsonrpc request/responds values for error handling purposes.
         """
         return {"jsonrpc": DEFAULT_JSONRPC, "id": None}
-    
+
     def _validate_params_types(self, method, params):
         """
         Validates request's parameter types.
@@ -420,25 +420,25 @@ class JSONRPCService(object):
         if isinstance(params, list):
             if not isinstance(self.method_data[method]['types'], list):
                 raise InvalidParamsError
-            
+
             for param, type in zip(params, self.method_data[method]['types']):
                 if not (isinstance(param, type) or param is None):
                     raise InvalidParamsError
         elif isinstance(params, dict):
             if not isinstance(self.method_data[method]['types'], dict):
                 raise InvalidParamsError
-            
+
             if self.method_data[method].has_key('required'):
                 for key in self.method_data[method]['required']:
                     if not params.has_key(key):
                         raise InvalidParamsError
-            
+
             for key in params.keys():
                 if not self.method_data[method]['types'].has_key(key) or \
                 not (isinstance(params[key], self.method_data[method]['types'][key]) \
                 or params[key] is None):
                     raise InvalidParamsError
-            
+
 
 class JSONRPCError(Exception):
     """
@@ -514,8 +514,8 @@ class KeywordError(JSONRPCError):
     """The received JSON-RPC request is trying to use keyword arguments even tough its version is 1.0."""
     code = -32099
     message = 'Keyword argument error'
-    
-    
+
+
 class ServerError(JSONRPCError):
     """Generic server error."""
     code = -32000
