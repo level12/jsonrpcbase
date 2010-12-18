@@ -1,0 +1,16 @@
+[patterns]
+**.html_tmpl = native
+**.css = native
+**.js = native
+**.py = native
+**.txt = native
+**.html = native
+**.py_tmpl = native
+**.cfg = native
+**.in_tmpl = native
+**.tpl = native
+MANIFEST.in = native
+**.sql = native
+
+[eol]
+only-consistent = False
