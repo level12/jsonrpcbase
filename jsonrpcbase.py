@@ -178,12 +178,14 @@ class JSONRPCService(object):
                     try:
                         self._fill_request(request_, rdata_)
                     except InvalidRequestError, e:
-                        responds.append(self._get_err(e, request_['id']))
+                        err = self._get_err(e, request_['id'])
+                        if err:
+                            responds.append(err)
                         continue
                     except JSONRPCError, e:
-                        responds.append(self._get_err(e,
-                                                 request_['id'],
-                                                 request_['jsonrpc']))
+                        err = self._get_err(e, request_['id'])
+                        if err:
+                            responds.append(err)
                         continue
 
                     requests.append(request_)
@@ -192,10 +194,9 @@ class JSONRPCService(object):
                     try:
                         respond = self._handle_request(request_)
                     except JSONRPCError, e:
-                        responds.append(self._get_err(e,
+                        respond = self._get_err(e,
                                                  request_['id'],
-                                                 request_['jsonrpc']))
-                        continue
+                                                 request_['jsonrpc'])
 
                     # Don't respond to notifications
                     if respond is not None:
