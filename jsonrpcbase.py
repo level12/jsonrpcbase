@@ -73,6 +73,7 @@ Example:
         my_socket.send(result)
 """
 import sys
+import logging
 from functools import wraps
 
 # JSON library importing
@@ -85,6 +86,8 @@ except ImportError:
         raise ImportError('Your system has no json (included in Python v2.6 or later) or simplejson module available.')
 
 DEFAULT_JSONRPC = '2.0'
+
+log = logging.getLogger(__name__)
 
 class JSONRPCService(object):
     """
@@ -368,10 +371,10 @@ class JSONRPCService(object):
             if isinstance(params, list):
                 # Does it have enough arguments?
                 if len(params) < self._man_args(method):
-                    raise InvalidParamsError
+                    raise InvalidParamsError('not enough arguments')
                 # Does it have too many arguments?
                 if not self._vargs(method) and len(params) > self._max_args(method):
-                    raise InvalidParamsError
+                    raise InvalidParamsError('too many arguments')
 
                 result = method(*params)
             elif isinstance(params, dict):
@@ -385,8 +388,10 @@ class JSONRPCService(object):
         except JSONRPCError:
             raise
         except Exception:
+            log.exception('method %s threw an exception' % request['method'])
             # Exception was raised inside the method.
             raise ServerError
+
 
         return result
 
@@ -420,26 +425,26 @@ class JSONRPCService(object):
         """
         if isinstance(params, list):
             if not isinstance(self.method_data[method]['types'], list):
-                raise InvalidParamsError
+                raise InvalidParamsError('expected keyword params, not positional')
 
-            for param, type in zip(params, self.method_data[method]['types']):
+            for param, type, posnum in zip(params, self.method_data[method]['types'], range(1, len(params))):
                 if not (isinstance(param, type) or param is None):
-                    raise InvalidParamsError
+                    raise InvalidParamsError('positional arg #%s is the wrong type' % posnum)
+
         elif isinstance(params, dict):
             if not isinstance(self.method_data[method]['types'], dict):
-                raise InvalidParamsError
+                raise InvalidParamsError('expected positional params, not keyword')
 
             if self.method_data[method].has_key('required'):
                 for key in self.method_data[method]['required']:
                     if not params.has_key(key):
-                        raise InvalidParamsError
+                        raise InvalidParamsError('missing key: %s' % key)
 
             for key in params.keys():
                 if not self.method_data[method]['types'].has_key(key) or \
                 not (isinstance(params[key], self.method_data[method]['types'][key]) \
                 or params[key] is None):
-                    raise InvalidParamsError
-
+                    raise InvalidParamsError('arg "%s" is the wrong type' % key)
 
 class JSONRPCError(Exception):
     """
@@ -502,7 +507,8 @@ class InvalidParamsError(JSONRPCError):
     """Invalid method parameters."""
     code = -32602
     message = 'Invalid params'
-
+    def __init__(self, data=None):
+        self.data = data
 
 class InternalError(JSONRPCError):
     """Internal JSON-RPC error."""
