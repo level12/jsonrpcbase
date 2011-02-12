@@ -11,7 +11,7 @@ except ImportError:
     required_packages.append('simplejson')
 
 setup(name='JSONRPCBase',
-      version='0.1.0',
+      version='0.1.1',
       description='Simple JSON-RPC service without transport layer',
       long_description = long_desc,
       classifiers=[
