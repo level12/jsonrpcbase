@@ -68,3 +68,11 @@ Seems stable, but hasn't been widely used.
 
 The `development version <https://bitbucket.org/rsyring/jsonrpcbase/get/tip.zip#egg=JSONRPCBase-dev>`_
 is installable with ``easy_install JSONRPCBase==dev``.
+
+Credits
+---------
+
+This project was originally developed by:
+
+Juhani Åhman
+http://bitbucket.org/fuzzybyte/jsonrpcbase/src
