@@ -1,4 +1,5 @@
-Introduction
+
+Intro
 ---------------
 
 Simple JSON-RPC service without transport layer
