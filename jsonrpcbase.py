@@ -427,7 +427,7 @@ class JSONRPCService(object):
             if not isinstance(self.method_data[method]['types'], list):
                 raise InvalidParamsError('expected keyword params, not positional')
 
-            for param, type, posnum in zip(params, self.method_data[method]['types'], range(1, len(params))):
+            for param, type, posnum in zip(params, self.method_data[method]['types'], range(1, len(params)+1)):
                 if not (isinstance(param, type) or param is None):
                     raise InvalidParamsError('positional arg #%s is the wrong type' % posnum)
 
