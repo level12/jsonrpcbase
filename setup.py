@@ -1,13 +1,31 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+from setuptools import setup, find_packages
 
-from distutils.core import setup
+fh = open('readme.rst', 'rb')
+long_desc = fh.read()
+fh.close()
 
-setup(name='jsonrpcbase',
-      version='0.1-dev',
+required_packages = ['isapi_wsgi']
+try:
+    import json
+except ImportError:
+    required_packages.append('simplejson')
+
+setup(name='JSONRPCBase',
+      version='0.1.0',
       description='Simple JSON-RPC service without transport layer',
-      author='Juhani Åhman',
-      author_email='juhani.ahman@cs.helsinki.fi',
-      url='http://bitbucket.org/fuzzybyte/jsonrpcbase/src',
+      long_description = long_desc,
+      classifiers=[
+        'Development Status :: 4 - Beta',
+        #'Development Status :: 5 - Production/Stable',
+        'Intended Audience :: Developers',
+        'License :: OSI Approved :: MIT License',
+      ],
+      author='Randy Syring',
+      author_email='rsyring@gmail.com',
+      url='https://bitbucket.org/rsyring/jsonrpcbase',
+      license='MIT',
       py_modules=['jsonrpcbase'],
+      install_requires=required_packages,
+      include_package_data=True,
+      zip_safe=False,
      )

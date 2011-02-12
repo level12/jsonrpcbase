@@ -1,0 +1,7 @@
+
+This project was originally developed by:
+
+Juhani Åhman <juhani.ahman@cs.helsinki.fi>
+http://bitbucket.org/fuzzybyte/jsonrpcbase/src
+
+He encouraged a fork because he wasn't using the project any longer.
