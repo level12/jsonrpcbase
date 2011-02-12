@@ -4,7 +4,7 @@ fh = open('readme.rst', 'rb')
 long_desc = fh.read()
 fh.close()
 
-required_packages = ['isapi_wsgi']
+required_packages = []
 try:
     import json
 except ImportError:
