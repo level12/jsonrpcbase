@@ -64,7 +64,7 @@ Please visit: http://groups.google.com/group/blazelibs
 Current Status
 ---------------
 
-Seems stable, but hasn't been widely used.
+Seems stable, but hasn't been widely used to my knowledge.
 
 The `development version <https://bitbucket.org/rsyring/jsonrpcbase/get/tip.zip#egg=JSONRPCBase-dev>`_
 is installable with ``easy_install JSONRPCBase==dev``.
