@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-fh = open('readme.rst', 'rb')
+fh = open('README.rst', 'rb')
 long_desc = fh.read()
 fh.close()
 
