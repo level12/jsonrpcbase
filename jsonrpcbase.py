@@ -74,6 +74,7 @@ Example:
 """
 import sys
 import logging
+import types
 from functools import wraps
 
 # JSON library importing
@@ -266,10 +267,13 @@ class JSONRPCService(object):
         """
         Returns number of mandatory arguments required by given function.
         """
+        argcount = f.func_code.co_argcount
+        if type(f) == types.MethodType:
+            argcount -= 1
         if f.func_defaults is None:
-            return f.func_code.co_argcount
+            return argcount
 
-        return f.func_code.co_argcount - len(f.func_defaults)
+        return argcount - len(f.func_defaults)
 
     def _max_args(self, f):
         """

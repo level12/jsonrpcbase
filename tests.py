@@ -19,6 +19,10 @@ def square(a):
 def hello():
     return "Hello world!"
 
+class Hello(object):
+    def msg(self):
+        return "Hello world!"
+
 def noop(*args, **kwargs):
     pass
 
@@ -29,6 +33,7 @@ s.add(subtract)
 s.add(kwargs_subtract)
 s.add(square)
 s.add(hello)
+s.add(Hello().msg, name='hello_inst')
 s.add(noop)
 s.add(broken_func)
 
@@ -75,6 +80,18 @@ def test_no_args():
     result = s.call_py('{"jsonrpc": "' +
                        jsonrpcbase.DEFAULT_JSONRPC +
                        '", "method": "hello", "id": "1"}')
+
+    assert_equal(result['jsonrpc'], jsonrpcbase.DEFAULT_JSONRPC)
+    assert_equal(result['result'], "Hello world!")
+    assert_equal(result['id'], "1")
+
+def test_no_args_instance_method():
+    """
+    Test valid jsonrpc no argument calls.
+    """
+    result = s.call_py('{"jsonrpc": "' +
+                       jsonrpcbase.DEFAULT_JSONRPC +
+                       '", "method": "hello_inst", "id": "1"}')
 
     assert_equal(result['jsonrpc'], jsonrpcbase.DEFAULT_JSONRPC)
     assert_equal(result['result'], "Hello world!")
