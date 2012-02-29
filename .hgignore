@@ -1,3 +1,7 @@
 ^(build|dist|.+\.egg-info)/
 \.py[co]$
 glob:*.komodoproject
+syntax: glob
+.coverage
+coverage.xml
+nosetests.xml
