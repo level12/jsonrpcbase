@@ -25,7 +25,7 @@ except ImportError:
 
 setup(
     name='JSONRPCBase',
-    version='0.1.2',
+    version='0.1.3',
     description='Simple JSON-RPC service without transport layer',
     long_description= readme_rst + '\n\n' + changelog_rst,
     classifiers=[
