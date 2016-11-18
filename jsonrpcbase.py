@@ -74,20 +74,11 @@ Example:
         # Send back results.
         my_socket.send(result)
 """
+import json
 import logging
 import types
 
 import six
-
-# JSON library importing
-try:
-    import json
-except ImportError:
-    try:
-        import simplejson as json
-    except ImportError:
-        raise ImportError('Your system has no json (included in Python v2.6 or later) '
-                          'or simplejson module available.')
 
 DEFAULT_JSONRPC = '2.0'
 

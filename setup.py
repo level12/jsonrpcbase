@@ -18,10 +18,6 @@ readme_rst = open(os.path.join(cdir, 'readme.rst')).read()
 changelog_rst = open(os.path.join(cdir, 'changelog.rst')).read()
 
 required_packages = ['six']
-try:
-    import json
-except ImportError:
-    required_packages.append('simplejson')
 
 setup(
     name='JSONRPCBase',
