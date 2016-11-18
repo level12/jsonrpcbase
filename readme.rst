@@ -1,3 +1,14 @@
+JSONRPCBase
+===========
+
+.. image:: https://ci.appveyor.com/api/projects/status/mgn5i4m1wx2nu70y?svg=true
+    :target: https://ci.appveyor.com/project/level12/jsonrpcbase
+
+.. image:: https://circleci.com/gh/level12/jsonrpcbase.svg?style=shield
+    :target: https://circleci.com/gh/level12/jsonrpcbase
+
+.. image:: https://codecov.io/gh/level12/jsonrpcbase/branch/master/graph/badge.svg
+    :target: https://codecov.io/gh/level12/jsonrpcbase
 
 Intro
 ---------------
