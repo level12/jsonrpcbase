@@ -25,7 +25,7 @@ except ImportError:
 
 setup(
     name='JSONRPCBase',
-    version='0.1.3',
+    version='0.2.0',
     description='Simple JSON-RPC service without transport layer',
     long_description= readme_rst + '\n\n' + changelog_rst,
     classifiers=[
@@ -35,12 +35,13 @@ setup(
         'License :: OSI Approved :: MIT License',
         'Operating System :: POSIX :: Linux',
         'Operating System :: Microsoft :: Windows',
-        'Programming Language :: Python :: 2.6',
         'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3.4',
+        'Programming Language :: Python :: 3.5',
     ],
     author='Randy Syring',
-    author_email='rsyring@gmail.com',
-    url='https://bitbucket.org/rsyring/jsonrpcbase',
+    author_email='randy.syring@level12.io',
+    url='https://github.com/level12/jsonrpcbase',
     license='MIT',
     py_modules=['jsonrpcbase'],
     install_requires=required_packages,

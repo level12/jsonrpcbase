@@ -67,7 +67,7 @@ Current Status
 
 Seems stable, but hasn't been widely used to my knowledge.
 
-The `development version <https://bitbucket.org/rsyring/jsonrpcbase/get/tip.zip#egg=JSONRPCBase-dev>`_
+The `development version <https://github.com/level12/jsonrpcbase/archive/master.zip#egg=JSONRPCBase-dev>`_
 is installable with ``easy_install JSONRPCBase==dev``.
 
 Credits
