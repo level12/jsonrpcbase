@@ -322,8 +322,7 @@ class JSONRPCService(object):
         """
         if 'id' in rdata:
             if isinstance(rdata['id'], six.string_types) or \
-                    isinstance(rdata['id'], int) or \
-                    isinstance(rdata['id'], long) or \
+                    isinstance(rdata['id'], six.integer_types) or \
                     isinstance(rdata['id'], float) or \
                     rdata['id'] is None:
                 return rdata['id']
