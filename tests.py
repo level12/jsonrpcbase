@@ -4,6 +4,7 @@ jsonrpcbase tests
 
 import jsonrpcbase
 from nose.tools import assert_equal, assert_not_equal
+import six
 
 s = jsonrpcbase.JSONRPCService()
 
@@ -414,7 +415,7 @@ def test_positional_validation():
     def posv(a, b, c, d, e, f=6):
         return
 
-    s.add(posv, types=[basestring, int, float, bool, bool, int])
+    s.add(posv, types=[six.string_types[0], int, float, bool, bool, int])
 
     result = s.call_py('{"jsonrpc": "' + jsonrpcbase.DEFAULT_JSONRPC +
                        '", "method": "posv", "params": ["foo", 5, 6.0, true, false], "id": "1"}')

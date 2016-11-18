@@ -77,6 +77,8 @@ Example:
 import logging
 import types
 
+import six
+
 # JSON library importing
 try:
     import json
@@ -158,7 +160,7 @@ class JSONRPCService(object):
                 rdata = json.loads(jsondata)
             except ValueError:
                 raise ParseError
-        except ParseError, e:
+        except ParseError as e:
             return self._get_err(e)
 
         # set some default values for error handling
@@ -185,12 +187,12 @@ class JSONRPCService(object):
                     request_ = self._get_default_vals()
                     try:
                         self._fill_request(request_, rdata_)
-                    except InvalidRequestError, e:
+                    except InvalidRequestError as e:
                         err = self._get_err(e, request_['id'])
                         if err:
                             responds.append(err)
                         continue
-                    except JSONRPCError, e:
+                    except JSONRPCError as e:
                         err = self._get_err(e, request_['id'])
                         if err:
                             responds.append(err)
@@ -201,7 +203,7 @@ class JSONRPCService(object):
                 for request_ in requests:
                     try:
                         respond = self._handle_request(request_)
-                    except JSONRPCError, e:
+                    except JSONRPCError as e:
                         respond = self._get_err(e,
                                                 request_['id'],
                                                 request_['jsonrpc'])
@@ -219,9 +221,9 @@ class JSONRPCService(object):
                 # empty dict, list or wrong type
                 raise InvalidRequestError
 
-        except InvalidRequestError, e:
+        except InvalidRequestError as e:
             return self._get_err(e, request['id'])
-        except JSONRPCError, e:
+        except JSONRPCError as e:
             return self._get_err(e, request['id'], request['jsonrpc'])
 
     def _get_err(self, e, id=None, jsonrpc=DEFAULT_JSONRPC):
@@ -262,7 +264,7 @@ class JSONRPCService(object):
         """
         Returns True if given function accepts variadic positional arguments, otherwise False.
         """
-        if f.func_code.co_flags & 4:
+        if f.__code__.co_flags & 4:
             return True
 
         return False
@@ -271,25 +273,25 @@ class JSONRPCService(object):
         """
         Returns number of mandatory arguments required by given function.
         """
-        argcount = f.func_code.co_argcount
+        argcount = f.__code__.co_argcount
 
         # account for "self" getting passed to class instance methods
         if isinstance(f, types.MethodType):
             argcount -= 1
 
-        if f.func_defaults is None:
+        if f.__defaults__ is None:
             return argcount
 
-        return argcount - len(f.func_defaults)
+        return argcount - len(f.__defaults__)
 
     def _max_args(self, f):
         """
         Returns maximum number of arguments accepted by given function.
         """
-        if f.func_defaults is None:
-            return f.func_code.co_argcount
+        if f.__defaults__ is None:
+            return f.__code__.co_argcount
 
-        return f.func_code.co_argcount + len(f.func_defaults)
+        return f.__code__.co_argcount + len(f.__defaults__)
 
     def _get_jsonrpc(self, rdata):
         """
@@ -319,7 +321,7 @@ class JSONRPCService(object):
         InvalidRequestError will be raised if the id value has invalid type.
         """
         if 'id' in rdata:
-            if isinstance(rdata['id'], basestring) or \
+            if isinstance(rdata['id'], six.string_types) or \
                     isinstance(rdata['id'], int) or \
                     isinstance(rdata['id'], long) or \
                     isinstance(rdata['id'], float) or \
@@ -340,7 +342,7 @@ class JSONRPCService(object):
         MethodNotFoundError will be raised if a method with given method name does not exist.
         """
         if 'method' in rdata:
-            if not isinstance(rdata['method'], basestring):
+            if not isinstance(rdata['method'], six.string_types):
                 raise InvalidRequestError
         else:
             raise InvalidRequestError

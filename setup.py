@@ -17,7 +17,7 @@ cdir = os.path.abspath(os.path.dirname(__file__))
 readme_rst = open(os.path.join(cdir, 'readme.rst')).read()
 changelog_rst = open(os.path.join(cdir, 'changelog.rst')).read()
 
-required_packages = []
+required_packages = ['six']
 try:
     import json
 except ImportError:
