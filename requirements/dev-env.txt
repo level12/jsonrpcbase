@@ -1,0 +1,6 @@
+-r common.txt
+
+coverage
+flake8
+nose
+tox

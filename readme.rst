@@ -1,3 +1,14 @@
+JSONRPCBase
+===========
+
+.. image:: https://ci.appveyor.com/api/projects/status/mgn5i4m1wx2nu70y?svg=true
+    :target: https://ci.appveyor.com/project/level12/jsonrpcbase
+
+.. image:: https://circleci.com/gh/level12/jsonrpcbase.svg?style=shield
+    :target: https://circleci.com/gh/level12/jsonrpcbase
+
+.. image:: https://codecov.io/gh/level12/jsonrpcbase/branch/master/graph/badge.svg
+    :target: https://codecov.io/gh/level12/jsonrpcbase
 
 Intro
 ---------------
@@ -67,7 +78,7 @@ Current Status
 
 Seems stable, but hasn't been widely used to my knowledge.
 
-The `development version <https://bitbucket.org/rsyring/jsonrpcbase/get/tip.zip#egg=JSONRPCBase-dev>`_
+The `development version <https://github.com/level12/jsonrpcbase/archive/master.zip#egg=JSONRPCBase-dev>`_
 is installable with ``easy_install JSONRPCBase==dev``.
 
 Credits
