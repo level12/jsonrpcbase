@@ -426,7 +426,7 @@ class JSONRPCService(object):
             for key in params.keys():
                 if key not in self.method_data[method]['types'] or \
                         not (isinstance(params[key], self.method_data[method]['types'][key])
-                             or params[key] is None):  # noqa
+                             or params[key] is None):
                     raise InvalidParamsError('arg "%s" is the wrong type' % key)
 
 
