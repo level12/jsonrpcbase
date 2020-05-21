@@ -1,0 +1,32 @@
+[tool.poetry]
+name = "kbase_jsonrpcbase"
+version = "0.2.0"
+description = "Simple JSON-RPC service without transport layer"
+authors = []
+license = "MIT"
+readme = "readme.rst"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python :: 2.7",
+    "Programming Language :: Python :: 3.4",
+    "Programming Language :: Python :: 3.5"
+]
+homepage = "https://github.com/kbaseIncubator/jsonrpcbase"
+
+[tool.poetry.dependencies]
+python = "^3.5"
+six = "^1.15.0"
+
+[tool.poetry.dev-dependencies]
+nose = "1.3.7"
+flake8 = "^3.8.1"
+mypy = "^0.770"
+coverage = "^5.1"
+
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"
