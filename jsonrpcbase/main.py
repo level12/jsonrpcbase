@@ -129,10 +129,7 @@ class JSONRPCService(object):
             if isinstance(rdata, dict) and rdata:
                 # It's a single request.
                 self._fill_request(request, rdata)
-                resp = self._handle_request(request, metadata)
-                if resp is None:
-                    return resp
-                return resp
+                return self._handle_request(request, metadata)
             elif isinstance(rdata, list) and rdata:
                 # It's a batch.
                 requests = []
