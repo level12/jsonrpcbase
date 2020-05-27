@@ -348,6 +348,10 @@ class JSONRPCService(object):
             jsonschema.validate(params, schema)
         result = None
         try:
+            if isinstance(params, dict):
+                # Do not accept keyword arguments if the jsonrpc version is not >=1.1.
+                if request['jsonrpc'] < 11:
+                    raise KeywordError
             result = method(params, metadata)
         except Exception:
             log.exception('method %s threw an exception' % request['method'])
