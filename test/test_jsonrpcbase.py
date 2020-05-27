@@ -52,7 +52,6 @@ def test_multiple_args():
                        + jsonrpcbase.DEFAULT_JSONRPC
                        + '", "method": "subtract", "params": [42, 23], "id": "1"}')
 
-    print('result', result)
     assert result['jsonrpc'] == jsonrpcbase.DEFAULT_JSONRPC
     assert result['result'] == 19
     assert result['id'] == "1"
@@ -78,7 +77,6 @@ def test_single_arg():
     result = s.call_py('{"jsonrpc": "'
                        + jsonrpcbase.DEFAULT_JSONRPC
                        + '", "method": "square", "params": [2], "id": "1"}')
-    print('result', result)
     assert result['jsonrpc'] == jsonrpcbase.DEFAULT_JSONRPC
     assert result['result'] == 4
     assert result['id'] == "1"
@@ -104,7 +102,6 @@ def test_no_args_instance_method():
     result = s.call_py('{"jsonrpc": "'
                        + jsonrpcbase.DEFAULT_JSONRPC
                        + '", "method": "hello_inst", "id": "1"}')
-    print('no_args', result)
     assert result['jsonrpc'] == jsonrpcbase.DEFAULT_JSONRPC
     assert result['result'] == "Hello world!"
     assert result['id'] == "1"
@@ -376,7 +373,6 @@ def test_alternate_name():
     s.add(finnish_hello, name="fihello")
     result = s.call_py('{"jsonrpc": "' + jsonrpcbase.DEFAULT_JSONRPC
                        + '", "method": "fihello", "id": "1"}')
-    print('xyz result', result)
     assert result['jsonrpc'] == jsonrpcbase.DEFAULT_JSONRPC
     assert result['result'] == "Hei maailma!"
     assert result['id'] == "1"
@@ -426,7 +422,6 @@ def test_positional_validation_error():
     # third argument is str, not float.
     result = s.call_py('{"jsonrpc": "' + jsonrpcbase.DEFAULT_JSONRPC
                        + '", "method": "pose", "params": [1, false, "x"], "id": "1"}')
-    print('xyz result', result)
     assert result['jsonrpc'] == jsonrpcbase.DEFAULT_JSONRPC
     assert result['error']['code'] == -32602
     assert result['id'] == "1"

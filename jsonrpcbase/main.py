@@ -189,7 +189,6 @@ class JSONRPCService(object):
                 'message': err.message,
                 'code': -32602,
             }
-        print('aaa resp', resp)
         return resp
 
     def _get_err(self, e, id=None, jsonrpc=DEFAULT_JSONRPC):
