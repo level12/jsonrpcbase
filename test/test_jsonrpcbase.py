@@ -1,40 +1,37 @@
 """
 jsonrpcbase tests
 """
-
 import jsonrpcbase
-from nose.tools import assert_equal, assert_not_equal
-import six
 
 s = jsonrpcbase.JSONRPCService()
 
 
-def subtract(a, b):
-    return a - b
+def subtract(params, meta):
+    return params[0] - params[1]
 
 
-def kwargs_subtract(**kwargs):
-    return kwargs['a'] - kwargs['b']
+def kwargs_subtract(params, meta):
+    return params['a'] - params['b']
 
 
-def square(a):
-    return a * a
+def square(params, meta):
+    return params[0] * params[0]
 
 
-def hello():
+def hello(params, meta):
     return "Hello world!"
 
 
-class Hello(object):
-    def msg(self):
+class Hello():
+    def msg(self, params, meta):
         return "Hello world!"
 
 
-def noop(*args, **kwargs):
+def noop(params, meta):
     pass
 
 
-def broken_func(a):
+def broken_func(params, meta):
     raise TypeError
 
 
@@ -55,9 +52,10 @@ def test_multiple_args():
                        + jsonrpcbase.DEFAULT_JSONRPC
                        + '", "method": "subtract", "params": [42, 23], "id": "1"}')
 
-    assert_equal(result['jsonrpc'], jsonrpcbase.DEFAULT_JSONRPC)
-    assert_equal(result['result'], 19)
-    assert_equal(result['id'], "1")
+    print('result', result)
+    assert result['jsonrpc'] == jsonrpcbase.DEFAULT_JSONRPC
+    assert result['result'] == 19
+    assert result['id'] == "1"
 
 
 def test_kwargs():
@@ -68,9 +66,9 @@ def test_kwargs():
                        + jsonrpcbase.DEFAULT_JSONRPC
                        + '", "method": "kwargs_subtract", "params": {"a":42, "b":23}, "id": "1"}')
 
-    assert_equal(result['jsonrpc'], jsonrpcbase.DEFAULT_JSONRPC)
-    assert_equal(result['result'], 19)
-    assert_equal(result['id'], "1")
+    assert result['jsonrpc'] == jsonrpcbase.DEFAULT_JSONRPC
+    assert result['result'] == 19
+    assert result['id'] == "1"
 
 
 def test_single_arg():
@@ -80,10 +78,10 @@ def test_single_arg():
     result = s.call_py('{"jsonrpc": "'
                        + jsonrpcbase.DEFAULT_JSONRPC
                        + '", "method": "square", "params": [2], "id": "1"}')
-
-    assert_equal(result['jsonrpc'], jsonrpcbase.DEFAULT_JSONRPC)
-    assert_equal(result['result'], 4)
-    assert_equal(result['id'], "1")
+    print('result', result)
+    assert result['jsonrpc'] == jsonrpcbase.DEFAULT_JSONRPC
+    assert result['result'] == 4
+    assert result['id'] == "1"
 
 
 def test_no_args():
@@ -94,9 +92,9 @@ def test_no_args():
                        + jsonrpcbase.DEFAULT_JSONRPC
                        + '", "method": "hello", "id": "1"}')
 
-    assert_equal(result['jsonrpc'], jsonrpcbase.DEFAULT_JSONRPC)
-    assert_equal(result['result'], "Hello world!")
-    assert_equal(result['id'], "1")
+    assert result['jsonrpc'] == jsonrpcbase.DEFAULT_JSONRPC
+    assert result['result'] == "Hello world!"
+    assert result['id'] == "1"
 
 
 def test_no_args_instance_method():
@@ -106,10 +104,10 @@ def test_no_args_instance_method():
     result = s.call_py('{"jsonrpc": "'
                        + jsonrpcbase.DEFAULT_JSONRPC
                        + '", "method": "hello_inst", "id": "1"}')
-
-    assert_equal(result['jsonrpc'], jsonrpcbase.DEFAULT_JSONRPC)
-    assert_equal(result['result'], "Hello world!")
-    assert_equal(result['id'], "1")
+    print('no_args', result)
+    assert result['jsonrpc'] == jsonrpcbase.DEFAULT_JSONRPC
+    assert result['result'] == "Hello world!"
+    assert result['id'] == "1"
 
 
 def test_empty_return():
@@ -118,9 +116,9 @@ def test_empty_return():
     """
     result = s.call_py('{"jsonrpc": "2.0", "method": "noop", "params": [1,2,3,4,5], "id":3}')
 
-    assert_equal(result['jsonrpc'], jsonrpcbase.DEFAULT_JSONRPC)
-    assert_equal(result['result'], None)
-    assert_equal(result['id'], 3)
+    assert result['jsonrpc'] == jsonrpcbase.DEFAULT_JSONRPC
+    assert result['result'] is None
+    assert result['id'] == 3
 
 
 def test_notification():
@@ -128,10 +126,10 @@ def test_notification():
     Test valid notification jsonrpc calls.
     """
     result = s.call_py('{"jsonrpc": "2.0", "method": "noop", "params": [1,2,3,4,5]}')
-    assert_equal(result, None)
+    assert result is None
 
     result = s.call_py('{"jsonrpc": "2.0", "method": "hello"}')
-    assert_equal(result, None)
+    assert result is None
 
 
 def test_parse_error():
@@ -142,9 +140,9 @@ def test_parse_error():
     result = s.call_py('{"jsonrpc": "' + jsonrpcbase.DEFAULT_JSONRPC
                        + '", "method": "subtract, "params": "bar", "baz]')
 
-    assert_equal(result['jsonrpc'], jsonrpcbase.DEFAULT_JSONRPC)
-    assert_equal(result['error']['code'], -32700)
-    assert_equal(result['id'], None)
+    assert result['jsonrpc'] == jsonrpcbase.DEFAULT_JSONRPC
+    assert result['error']['code'] == -32700
+    assert result['id'] is None
 
 
 def test_invalid_request_error():
@@ -155,9 +153,9 @@ def test_invalid_request_error():
     result = s.call_py('{"jsonrpc": "' + jsonrpcbase.DEFAULT_JSONRPC
                        + '", "method": 1, "params": "bar"}')
 
-    assert_equal(result['jsonrpc'], jsonrpcbase.DEFAULT_JSONRPC)
-    assert_equal(result['error']['code'], -32600)
-    assert_equal(result['id'], None)
+    assert result['jsonrpc'] == jsonrpcbase.DEFAULT_JSONRPC
+    assert result['error']['code'] == -32600
+    assert result['id'] is None
 
 
 def test_method_not_found_error():
@@ -168,31 +166,9 @@ def test_method_not_found_error():
     result = s.call_py('{"jsonrpc": "' + jsonrpcbase.DEFAULT_JSONRPC
                        + '", "method": "foofoo", "id": 1}')
 
-    assert_equal(result['jsonrpc'], jsonrpcbase.DEFAULT_JSONRPC)
-    assert_equal(result['error']['code'], -32601)
-    assert_equal(result['id'], 1)
-
-
-def test_pos_num_args_error():
-    """
-    Test error handling of positional arguments with jsonrpc calls having
-    wrong amount of arguments.
-    """
-    # too few params
-    result = s.call_py('{"jsonrpc": "' + jsonrpcbase.DEFAULT_JSONRPC
-                       + '", "method": "subtract", "params": [1], "id": "1"}')
-
-    assert_equal(result['jsonrpc'], jsonrpcbase.DEFAULT_JSONRPC)
-    assert_equal(result['error']['code'], -32602)
-    assert_equal(result['id'], "1")
-
-    # too many params
-    result = s.call_py('{"jsonrpc": "' + jsonrpcbase.DEFAULT_JSONRPC
-                       + '", "method": "subtract", "params": [1, 2, 3], "id": "1"}')
-
-    assert_equal(result['jsonrpc'], jsonrpcbase.DEFAULT_JSONRPC)
-    assert_equal(result['error']['code'], -32602)
-    assert_equal(result['id'], "1")
+    assert result['jsonrpc'] == jsonrpcbase.DEFAULT_JSONRPC
+    assert result['error']['code'] == -32601
+    assert result['id'] == 1
 
 
 def test_server_error():
@@ -202,9 +178,9 @@ def test_server_error():
     result = s.call_py('{"jsonrpc": "' + jsonrpcbase.DEFAULT_JSONRPC
                        + '", "method": "broken_func", "params": [5], "id": "1"}')
 
-    assert_equal(result['jsonrpc'], jsonrpcbase.DEFAULT_JSONRPC)
-    assert_equal(result['error']['code'], -32000)
-    assert_equal(result['id'], "1")
+    assert result['jsonrpc'] == jsonrpcbase.DEFAULT_JSONRPC
+    assert result['error']['code'] == -32000
+    assert result['id'] == "1"
 
 
 def test_version_handling():
@@ -213,43 +189,43 @@ def test_version_handling():
     """
     result = s.call_py('{"jsonrpc": "9999", "method": "noop", "params": {"kwarg": 5}}')
 
-    assert_equal(result['jsonrpc'], jsonrpcbase.DEFAULT_JSONRPC)
-    assert_equal(result['error']['code'], -32600)
-    assert_equal(result['id'], None)
+    assert result['jsonrpc'] == jsonrpcbase.DEFAULT_JSONRPC
+    assert result['error']['code'] == -32600
+    assert result['id'] is None
 
     result = s.call_py('{"jsonrpc": "2.0", "method": "noop", "params": {"kwarg": 5}}')
 
-    assert_equal(result, None)
+    assert result is None
 
     result = s.call_py('{"version": "1.1", "method": "noop", "params": {"kwarg": 5}}')
 
-    assert_equal(result, None)
+    assert result is None
 
     # trigger parse error
     result = s.call_py('{ "method": "echo", "params": "bar", "baz", "id": 1} ')
 
     # assume DEFAULT_JSONRPC version because version could not be read
-    assert_equal(result['jsonrpc'], jsonrpcbase.DEFAULT_JSONRPC)
-    assert_equal(result['error']['code'], -32700)
-    assert_equal(result['id'], None)
+    assert result['jsonrpc'] == jsonrpcbase.DEFAULT_JSONRPC
+    assert result['error']['code'] == -32700
+    assert result['id'] is None
 
     result = s.call_py('{"method": "foofoo", "params": [5], "id": 3}')
 
-    assert_equal(result['id'], 3)
-    assert_not_equal(result['error'], None)
-    assert_equal(result['result'], None)
+    assert result['id'] == 3
+    assert not result['error'] is None
+    assert result['result'] is None
 
     #  there should be error response
     result = s.call_py('{"method": "noop", "params": {"kwarg": 5}, "id": 6}')
 
-    assert_equal(result['id'], 6)
-    assert_not_equal(result['error'], None)
-    assert_equal(result['result'], None)
+    assert result['id'] == 6
+    assert result.get('error') is None
+    assert result['result'] is None
 
     # there should be no answer to a notification
     result = s.call_py('{"method": "noop", "params": {"kwarg": 5}}')
 
-    assert_equal(result, None)
+    assert result is None
 
 
 def test_batch():
@@ -267,15 +243,15 @@ def test_batch():
     ]
     ''')
 
-    assert_equal(len(results), 3)
+    assert len(results) == 3
 
     for result in results:
-        assert_equal(result['jsonrpc'], jsonrpcbase.DEFAULT_JSONRPC)
+        assert result['jsonrpc'] == jsonrpcbase.DEFAULT_JSONRPC
 
         if result['id'] == "1":
-            assert_equal(result['result'], 16)
+            assert result['result'] == 16
         if result['id'] == "2":
-            assert_equal(result['result'], 9)
+            assert result['result'] == 9
 
 
 def test_notification_batch():
@@ -291,7 +267,7 @@ def test_notification_batch():
     ]
     ''')
 
-    assert_equal(result, None)
+    assert result is None
 
 
 def test_batch_method_error_with_notification():
@@ -301,7 +277,7 @@ def test_batch_method_error_with_notification():
         {"jsonrpc": "''' + jsonrpcbase.DEFAULT_JSONRPC + '''", "method": "hello", "params": [7]}
     ]
     ''')
-    assert_equal(result, None)
+    assert result is None
 
 
 def test_batch_method_missing_with_notification():
@@ -312,7 +288,7 @@ def test_batch_method_missing_with_notification():
         + '''", "method": "methodnotthere", "params": [7]}
     ]
     ''')
-    assert_equal(result, None)
+    assert result is None
 
 
 def test_empty_batch():
@@ -322,9 +298,9 @@ def test_empty_batch():
     # rpc call with an empty Array
     result = s.call_py('[]')
 
-    assert_equal(result['jsonrpc'], jsonrpcbase.DEFAULT_JSONRPC)
-    assert_equal(result['error']['code'], -32600)
-    assert_equal(result['id'], None)
+    assert result['jsonrpc'] == jsonrpcbase.DEFAULT_JSONRPC
+    assert result['error']['code'] == -32600
+    assert result['id'] is None
 
 
 def test_parse_error_batch():
@@ -335,9 +311,9 @@ def test_parse_error_batch():
                        + '", "method": "sum", "params": [1,2,4], "id": "1"}'
                        ',{"jsonrpc": "2.0", "method" ]')
 
-    assert_equal(result['jsonrpc'], jsonrpcbase.DEFAULT_JSONRPC)
-    assert_equal(result['error']['code'], -32700)
-    assert_equal(result['id'], None)
+    assert result['jsonrpc'] == jsonrpcbase.DEFAULT_JSONRPC
+    assert result['error']['code'] == -32700
+    assert result['id'] is None
 
 
 def test_invalid_batch():
@@ -346,12 +322,12 @@ def test_invalid_batch():
     """
     results = s.call_py('[1,2,3]')
 
-    assert_equal(len(results), 3)
+    assert len(results) == 3
 
     for result in results:
-        assert_equal(result['jsonrpc'], jsonrpcbase.DEFAULT_JSONRPC)
-        assert_equal(result['error']['code'], -32600)
-        assert_equal(result['id'], None)
+        assert result['jsonrpc'] == jsonrpcbase.DEFAULT_JSONRPC
+        assert result['error']['code'] == -32600
+        assert result['id'] is None
 
 
 def test_partially_valid_batch():
@@ -374,139 +350,159 @@ def test_partially_valid_batch():
     ]
     ''')
 
-    assert_equal(len(results), 5)
+    assert len(results) == 5
 
     for result in results:
-        assert_equal(result['jsonrpc'], jsonrpcbase.DEFAULT_JSONRPC)
+        assert result['jsonrpc'] == jsonrpcbase.DEFAULT_JSONRPC
 
         if result['id'] == "1":
-            assert_equal(result['result'], 4)
+            assert result['result'] == 4
         elif result['id'] == "2":
-            assert_equal(result['result'], 19)
+            assert result['result'] == 19
         elif result['id'] == "5":
-            assert_equal(result['error']['code'], -32601)
+            assert result['error']['code'] == -32601
         elif result['id'] == "9":
-            assert_equal(result['error']['code'], -32000)
+            assert result['error']['code'] == -32000
         elif result['id'] is None:
-            assert_equal(result['error']['code'], -32600)
+            assert result['error']['code'] == -32600
 
 
 def test_alternate_name():
     """
     Test method calling with alternate name.
     """
-    def finnish_hello():
+    def finnish_hello(params, meta):
         return "Hei maailma!"
-
     s.add(finnish_hello, name="fihello")
-
     result = s.call_py('{"jsonrpc": "' + jsonrpcbase.DEFAULT_JSONRPC
                        + '", "method": "fihello", "id": "1"}')
-
-    assert_equal(result['jsonrpc'], jsonrpcbase.DEFAULT_JSONRPC)
-    assert_equal(result['result'], "Hei maailma!")
-    assert_equal(result['id'], "1")
+    print('xyz result', result)
+    assert result['jsonrpc'] == jsonrpcbase.DEFAULT_JSONRPC
+    assert result['result'] == "Hei maailma!"
+    assert result['id'] == "1"
 
 
 def test_positional_validation():
     """
     Test validation of positional arguments with valid jsonrpc calls.
     """
-    def posv(a, b, c, d, e, f=6):
+
+    def posv(params, meta):
         return
-
-    s.add(posv, types=[six.string_types[0], int, float, bool, bool, int])
-
+    schema = {
+        'type': 'array',
+        'items': [
+            {'type': 'string'},
+            {'type': 'integer'},
+            {'type': 'number'},
+            {'type': 'boolean'},
+            {'type': 'boolean'},
+        ]
+    }
+    s.add(posv, schema=schema)
     result = s.call_py('{"jsonrpc": "' + jsonrpcbase.DEFAULT_JSONRPC
                        + '", "method": "posv", "params": ["foo", 5, 6.0, true, false], "id": "1"}')
-
-    assert_equal(result['jsonrpc'], jsonrpcbase.DEFAULT_JSONRPC)
-    assert_equal(result['result'], None)
-    assert_equal(result['id'], "1")
+    assert result['jsonrpc'] == jsonrpcbase.DEFAULT_JSONRPC
+    assert result['result'] is None
+    assert result['id'] == "1"
 
 
 def test_positional_validation_error():
     """
     Test error handling of validation of positional arguments with invalid jsonrpc calls.
     """
-    def pose(a, b, c):
+
+    def pose(params, meta):
         return
-
-    s.add(pose, types=[int, bool, float])
-
-    # third argument is int, not float.
+    schema = {
+        'type': 'array',
+        'items': [
+            {'type': 'integer'},
+            {'type': 'boolean'},
+            {'type': 'number'},
+        ]
+    }
+    s.add(pose, schema=schema)
+    # third argument is str, not float.
     result = s.call_py('{"jsonrpc": "' + jsonrpcbase.DEFAULT_JSONRPC
-                       + '", "method": "pose", "params": [1, false, 6], "id": "1"}')
-
-    assert_equal(result['jsonrpc'], jsonrpcbase.DEFAULT_JSONRPC)
-    assert_equal(result['error']['code'], -32602)
-    assert_equal(result['id'], "1")
+                       + '", "method": "pose", "params": [1, false, "x"], "id": "1"}')
+    print('xyz result', result)
+    assert result['jsonrpc'] == jsonrpcbase.DEFAULT_JSONRPC
+    assert result['error']['code'] == -32602
+    assert result['id'] == "1"
 
 
 def test_keyword_validation():
     """
     Test validation of keyword arguments with valid jsonrpc calls.
     """
-    def keyv(**kwargs):
+    pass
+
+    def keyv(params, meta):
         return
-
-    s.add(keyv, types={'a': int, 'b': bool, 'c': float})
-
+    schema = {
+        'type': 'object',
+        'properties': {
+            'a': {'type': 'integer'},
+            'b': {'type': 'boolean'},
+            'c': {'type': 'number'},
+        }
+    }
+    s.add(keyv, schema=schema)
     result = s.call_py('{"jsonrpc": "' + jsonrpcbase.DEFAULT_JSONRPC + '", "method": "keyv", "params": {"a": 1, "b": false, "c": 6.0}, "id": "1"}')  # noqa
-
-    assert_equal(result['jsonrpc'], jsonrpcbase.DEFAULT_JSONRPC)
-    assert_equal(result['result'], None)
-    assert_equal(result['id'], "1")
-
-
-def test_keyword_validation_error():
-    """
-    Test error handling of validation of keyword arguments with invalid jsonrpc calls.
-    """
-    def keye(**kwargs):
-        return
-
-    s.add(keye, types={'a': int, 'b': bool, 'c': float})
-
-    # kwarg 'c' is int, not float.
-    result = s.call_py('{"jsonrpc": "' + jsonrpcbase.DEFAULT_JSONRPC
-                       + '", "method": "keye", "params": {"a": 1, "b": false, "c": 6}, "id": "1"}')
-    assert_equal(result['jsonrpc'], jsonrpcbase.DEFAULT_JSONRPC)
-    assert_equal(result['error']['code'], -32602)
-    assert_equal(result['id'], "1")
+    assert result['jsonrpc'] == jsonrpcbase.DEFAULT_JSONRPC
+    assert result['result'] is None
+    assert result['id'] == "1"
 
 
 def test_required_keyword_validation():
     """
     Test validation of required keyword arguments with valid jsonrpc calls.
     """
-    def reqv(**kwargs):
+
+    def reqv(params, meta):
         return
-
-    s.add(reqv, types={'a': int, 'b': bool, 'c': float}, required=['a', 'c'])
-
+    schema = {
+        'type': 'object',
+        'required': ['a', 'c'],
+        'properties': {
+            'a': {'type': 'integer'},
+            'b': {'type': 'boolean'},
+            'c': {'type': 'number'},
+        }
+    }
+    s.add(reqv, schema=schema)
     result = s.call_py('{"jsonrpc": "' + jsonrpcbase.DEFAULT_JSONRPC
                        + '", "method": "reqv", "params": {"a": 1, "c": 6.0}, "id": "1"}')
 
-    assert_equal(result['jsonrpc'], jsonrpcbase.DEFAULT_JSONRPC)
-    assert_equal(result['result'], None)
-    assert_equal(result['id'], "1")
+    assert result['jsonrpc'] == jsonrpcbase.DEFAULT_JSONRPC
+    assert result['result'] is None
+    assert result['id'] == "1"
 
 
 def test_required_keyword_validation_error():
     """
     Test error handling of validation of required keyword arguments with invalid jsonrpc calls.
     """
-    def reqe(**kwargs):
+    pass
+
+    def reqe(params, meta):
         return
-
-    s.add(reqe, types={'a': int, 'b': bool, 'c': float}, required=['a', 'b', 'c'])
-
+    schema = {
+        'type': 'object',
+        'required': ['a', 'b', 'c'],
+        'properties': {
+            'a': {'type': 'integer'},
+            'b': {'type': 'boolean'},
+            'c': {'type': 'number'},
+        }
+    }
+    s.add(reqe, schema=schema)
     result = s.call_py('{"jsonrpc": "' + jsonrpcbase.DEFAULT_JSONRPC
                        + '", "method": "reqe", "params": {"a": 1, "c": 6.0}, "id": "1"}')
-    assert_equal(result['jsonrpc'], jsonrpcbase.DEFAULT_JSONRPC)
-    assert_equal(result['error']['code'], -32602)
-    assert_equal(result['id'], "1")
+    assert result['jsonrpc'] == jsonrpcbase.DEFAULT_JSONRPC
+    assert result['error']['code'] == -32602
+    assert result['id'] == "1"
 
 
 if __name__ == '__main__':
