@@ -15,7 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed param validation in favor of using jsonschema [@jayrbolton](https://github.com/jayrbolton)
 
 ### Changed
-- Converted from nose tests to pytest [@jayrbolton](https://github.com/jayrbolton)
+- Converted from nose tests to pytest and add coverage tracking [@jayrbolton](https://github.com/jayrbolton)
+- Get to 100% test coverage [@jayrbolton](https://github.com/jayrbolton)
 - Converted dependency/publish management to poetry by [@jayrbolton](https://github.com/jayrbolton)
 - Reorganized repo structure to be more standardized by [@jayrbolton](https://github.com/jayrbolton)
 - Removed docker files and added `make test` command by [@jayrbolton](https://github.com/jayrbolton)
