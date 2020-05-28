@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 - Removed param validation in favor of using jsonschema [@jayrbolton](https://github.com/jayrbolton)
+- Removed support for JSON-RPC v1.0, only supporting 1.1 and 2.0 [@jayrbolton](https://github.com/jayrbolton)
 
 ### Changed
 - Converted from nose tests to pytest and add coverage tracking [@jayrbolton](https://github.com/jayrbolton)
