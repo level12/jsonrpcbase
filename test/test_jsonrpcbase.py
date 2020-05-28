@@ -507,7 +507,7 @@ def test_positional_validation_error():
     assert result['jsonrpc'] == DEFAULT_JSONRPC
     assert result['error']['code'] == -32602
     assert result['error']['message'] == 'Invalid params'
-    print('TODO positional validation', result['error'])
+    assert result['error']['data']['details'] == "'x' is not of type 'number'"
     assert result['id'] == "1"
 
 
@@ -582,4 +582,6 @@ def test_required_keyword_validation_error():
     })
     assert result['jsonrpc'] == DEFAULT_JSONRPC
     assert result['error']['code'] == -32602
+    assert result['error']['message'] == 'Invalid params'
+    assert result['error']['data']['details'] == "'b' is a required property"
     assert result['id'] == "1"
