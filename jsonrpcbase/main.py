@@ -173,7 +173,7 @@ class JSONRPCService(object):
         except JSONRPCError as e:
             return self._get_err(e, request['id'], request['jsonrpc'])
         except jsonschema.exceptions.ValidationError as e:
-            return self._get_jsonschema_err(e, request['id'], request['jsonrpc'])
+            return self._invalid_params_response(e, request['id'], request['jsonrpc'])
 
     def _invalid_id_type_response(self, err, request):
         """
@@ -186,9 +186,9 @@ class JSONRPCService(object):
         resp = {'id': None, 'error': err}
         return resp
 
-    def _get_jsonschema_err(self, err, id=None, jsonrpc=DEFAULT_JSONRPC):
+    def _invalid_params_response(self, err, id=None, jsonrpc=DEFAULT_JSONRPC):
         """
-        Returns an error message for a jsonschema validation error.
+        Returns an error message for a jsonschema validation error on the params.
         """
         resp = {'id': id}
         self._fill_ver(jsonrpc, resp)
@@ -218,6 +218,7 @@ class JSONRPCService(object):
             respond['jsonrpc'] = '2.0'
         elif ver == (1, 1):
             respond['version'] = '1.1'
+        # No other case possible; _get_jsonrpc will have raised an error or set a default
 
     def _get_jsonrpc(self, rdata):
         """
@@ -244,10 +245,7 @@ class JSONRPCService(object):
         InvalidRequestError will be raised if the id value has invalid type.
         """
         if 'id' in rdata:
-            if isinstance(rdata['id'], str) or \
-                    isinstance(rdata['id'], int) or \
-                    isinstance(rdata['id'], float) or \
-                    rdata['id'] is None:
+            if type(rdata['id']) in (str, int, float):
                 return rdata['id']
             else:
                 # invalid type
@@ -279,8 +277,7 @@ class JSONRPCService(object):
         Returns a list of jsonrpc request's method parameters.
         """
         if 'params' in rdata:
-            if isinstance(rdata['params'], dict) or isinstance(rdata['params'], list) or \
-                    rdata['params'] is None:
+            if type(rdata['params']) in (dict, list, None):
                 return rdata['params']
             else:
                 # wrong type
