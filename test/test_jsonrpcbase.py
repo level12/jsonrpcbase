@@ -506,6 +506,8 @@ def test_positional_validation_error():
     })
     assert result['jsonrpc'] == DEFAULT_JSONRPC
     assert result['error']['code'] == -32602
+    assert result['error']['message'] == 'Invalid params'
+    print('TODO positional validation', result['error'])
     assert result['id'] == "1"
 
 

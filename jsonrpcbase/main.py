@@ -184,7 +184,10 @@ class JSONRPCService(object):
         resp = {'id': id}
         self._fill_ver(jsonrpc, resp)
         resp['error'] = {
-            'message': err.message,
+            'message': 'Invalid params',
+            'data': {
+                'details': err.message,
+            },
             'code': -32602,
         }
         return resp
