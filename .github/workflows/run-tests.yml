@@ -27,7 +27,9 @@ jobs:
       run: poetry install
     - name: Run tests
       run: make test
-    - name: Coveralls
-      uses: coverallsapp/github-action@master
+    - name: Codecov
+      uses: codecov/codecov-action@v1
       with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
+        token: ${{ secrets.CODECOV_TOKEN }}
+        file: ./coverage.xml
+        fail_ci_if_error: true
