@@ -16,5 +16,6 @@ nosetests.xml
 *.nose.xml
 .cache
 __pycache__/
-.mypy_cache
+/.mypy_cache/
 /dist/
+/htmlcov/

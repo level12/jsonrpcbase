@@ -1,3 +1,3 @@
-from jsonrpcbase.main import JSONRPCService, DEFAULT_JSONRPC
+from jsonrpcbase.main import JSONRPCService
 
-__all__ = ['JSONRPCService', 'DEFAULT_JSONRPC']
+__all__ = ['JSONRPCService']
