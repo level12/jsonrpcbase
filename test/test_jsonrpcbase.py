@@ -218,6 +218,17 @@ def test_method_not_found_error():
     assert result['id'] == 1
 
 
+def test_method_missing_error():
+    """
+    Test missing method error
+    """
+    result = s.call_py({"jsonrpc": DEFAULT_JSONRPC, "id": 1})
+    assert result['jsonrpc'] == DEFAULT_JSONRPC
+    assert result['error']['code'] == -32600
+    assert result['error']['message'] == 'Invalid Request'
+    assert result['error']['data']['details'] == 'The required "method" field is missing'
+
+
 def test_server_error():
     """
     Test server error triggering jsonrpc calls.
@@ -289,7 +300,7 @@ def test_invalid_version():
     assert result['jsonrpc'] == DEFAULT_JSONRPC
     assert result['error']['code'] == -32600
     assert result['error']['message'] == 'Invalid Request'
-    assert result['error']['data']['details'] == 'Invalid jsonrpc version'
+    assert result['error']['data']['details'] == 'Invalid JSON-RPC version'
     assert result['id'] is None
 
 
@@ -306,18 +317,6 @@ def test_version_response_parse_error():
     assert result['id'] is None
 
 
-def test_version_response_unknown_method():
-    """
-    Test the jsonrpc version in the response for an unknown method error
-    """
-    # Use default, unknown method
-    res = s.call('{"method": "foofoo", "params": [5], "id": 3}')
-    result = json.loads(res)
-    assert result['jsonrpc'] == DEFAULT_JSONRPC
-    assert result['error']['code'] == -32601
-    assert result['id'] == 3
-
-
 def test_version_response_no_version():
     """
     Test the jsonrpc version in the response when no version is supplied
@@ -325,10 +324,11 @@ def test_version_response_no_version():
     # Use default
     res = s.call('{"method": "noop", "params": {"kwarg": 5}, "id": 6}')
     result = json.loads(res)
+    print('xyz result', result)
     assert result['id'] == 6
     assert result['jsonrpc'] == DEFAULT_JSONRPC
-    assert 'error' not in result
-    assert result['result'] is None
+    assert result['error']['message'] == 'Invalid Request'
+    assert result['error']['data'] == {'details': 'Missing JSON-RPC version'}
 
 
 def test_batch():

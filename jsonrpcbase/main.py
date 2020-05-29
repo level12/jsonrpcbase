@@ -220,18 +220,19 @@ class JSONRPCService(object):
 
         InvalidRequestError will be raised if the jsonrpc value has invalid value.
         """
-        if 'jsonrpc' in rdata:
-            if rdata['jsonrpc'] == '2.0':
-                return (2, 0)
-            else:
-                # invalid version
-                log.exception(f'Raising InvalidRequestError for invalid version in {rdata}')
-                raise InvalidRequestError(data={'details': 'Invalid jsonrpc version'})
-        # It's probably a JSON-RPC v1.x style call.
-        if rdata.get('version') == '1.1':
+        if rdata.get('jsonrpc') == '2.0':
+            # v2.0
+            return (2, 0)
+        elif rdata.get('version') == '1.1':
+            # v1.1
             return (1, 1)
-        # Use the default
-        return DEFAULT_JSONRPC
+        # Invalid or missing version
+        if 'jsonrpc' in rdata or 'version' in rdata:
+            log.exception(f'Raising InvalidRequestError for invalid version in {rdata}')
+            raise InvalidRequestError(data={'details': 'Invalid JSON-RPC version'})
+        else:
+            log.exception(f'Raising InvalidRequestError for missing version in {rdata}')
+            raise InvalidRequestError(data={'details': 'Missing JSON-RPC version'})
 
     def _get_id(self, rdata):
         """
@@ -265,7 +266,8 @@ class JSONRPCService(object):
                 raise InvalidRequestError(data=data)
         else:
             log.exception(f'Raising InvalidRequestError, missing method in {rdata}')
-            raise InvalidRequestError
+            data = {'details': 'The required "method" field is missing'}
+            raise InvalidRequestError(data=data)
         if rdata['method'] not in self.method_data:
             data = {'available_methods': list(self.method_data.keys())}
             raise MethodNotFoundError(data=data)
@@ -291,8 +293,8 @@ class JSONRPCService(object):
         if not isinstance(rdata, dict):
             log.exception(f'Raising InvalidRequestError for: {rdata}')
             raise InvalidRequestError
-        request['jsonrpc'] = self._get_jsonrpc(rdata)
         request['id'] = self._get_id(rdata)
+        request['jsonrpc'] = self._get_jsonrpc(rdata)
         request['method'] = self._get_method(rdata)
         request['params'] = self._get_params(rdata)
 
