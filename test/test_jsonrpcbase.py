@@ -33,6 +33,10 @@ def noop(params, meta):
     pass
 
 
+def return_meta(params, meta):
+    return meta
+
+
 def broken_func(params, meta):
     e = TypeError()
     e.message = 'whoops'
@@ -46,6 +50,7 @@ s.add(hello)
 s.add(Hello().msg, name='hello_inst')
 s.add(noop)
 s.add(broken_func)
+s.add(return_meta)
 
 
 def test_multiple_args():
@@ -103,6 +108,17 @@ def test_no_args():
     assert result['jsonrpc'] == DEFAULT_JSONRPC
     assert result['result'] == "Hello world!"
     assert result['id'] == "1"
+
+
+def test_metadata():
+    """
+    Test that metadata is passed to the function handler
+    """
+    req = f'{{"jsonrpc": "{DEFAULT_JSONRPC}", "method": "return_meta", "id": 0}}'
+    meta = {'x': 1}
+    res = s.call(req, meta)
+    result = json.loads(res)
+    assert result['result'] == meta
 
 
 def test_no_args_instance_method():
@@ -179,7 +195,7 @@ def test_invalid_request_type():
     assert result['id'] is None
 
 
-def test_invalid_method_typeh():
+def test_invalid_method_type():
     """
     Test the error response for a request with an invalid method field type
     """
@@ -210,7 +226,7 @@ def test_method_not_found_error():
         "method": "foofoo",
         "id": 1
     })
-    meths = {'hello_inst', 'broken_func', 'square', 'hello', 'subtract', 'noop', 'kwargs_subtract'}
+    meths = set(s.method_data.keys())
     assert result['jsonrpc'] == DEFAULT_JSONRPC
     assert result['error']['code'] == -32601
     assert result['error']['message'] == 'Method not found'

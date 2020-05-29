@@ -69,7 +69,6 @@ class JSONRPCService(object):
 
     def __init__(self):
         self.method_data = {}
-        self.json_schemas = {}
 
     def add(self, f, name=None, schema=None):
         """
