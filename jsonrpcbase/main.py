@@ -1,63 +1,57 @@
 """
 Simple JSON-RPC service without transport layer
 
-This library is intended as an auxiliary library for easy an implementation of JSON-RPC services
-with Unix/TCP socket-like transport protocols that do not have complex special requirements. You
-need to utilize some suitable transport protocol with this library to actually provide a working
-JSON-RPC service.
+See README.md for details
 
-Features:
-- Easy to use, small size, well tested.
-- Supports JSON-RPC v2.0. Compatible with v1.x style calls with the exception of v1.0
-  class-hinting.
-- Optional argument type validation that significantly eases development of jsonrpc method_data.
-
-No support for JSON-RPC v1.0
-
-Example:
-
-    import jsonrpcbase
-
-    chat_service = jsonrpcbase.JSONRPCService()
-
-    def login(username, password, timelimit=0):
-        (...)
-        return True
-
-    def receive_message(**kwargs):
-        (...)
-        return chat_message
-
-    def send_message(msg):
-        (...)
-
-    if __name__ == '__main__':
-
-        # Adds the method login to the service as a 'login'.
-        chat_service.add(login, types=[basestring, basestring, int])
-
-        # Adds the method receive_message to the service as a 'recv_msg'.
-        chat_service.add(receive_message, name='recv_msg', types={"msg": basestring, "id": int})
-
-        # Adds the method send_message as a 'send_msg' to the service.
-        chat_service.add(send_message, 'send_msg')
-
-        (...)
-
-        # Receive a JSON-RPC call.
-        jsonmsg = my_socket.recv()
-
-        # Process the JSON-RPC call.
-        result = chat_service.call(jsonmsg)
-
-        # Send back results.
-        my_socket.send(result)
+Uses Google Style Python docstrings:
+    https://github.com/google/styleguide/blob/gh-pages/pyguide.md#38-comments-and-docstrings
 """
 import json
 import logging
 import jsonschema
+from typing import Callable, Optional, List, Union
 
-DEFAULT_JSONRPC = (2, 0)
+import jsonrpcbase.exceptions as exceptions
+
+# Reference: https://www.jsonrpc.org/specification
+REQUEST_SCHEMA = {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "JSON-RPC Request Schema",
+    "description": "JSON-Schema that validates a JSON-RPC 2.0 request body (non-batch requests)",
+    "type": "object",
+    "required": ["jsonrpc", "method"],
+    "properties": {
+        "jsonrpc": {
+            "const": "2.0"
+        },
+        "method": {
+            "type": "string",
+            "minLength": 1,
+        },
+        "id": {
+            "type": ["integer", "string"]
+        },
+        "params": {
+            "anyOf": [{"type": "object"}, {"type": "array"}]
+        }
+    }
+}
+
+# Reference: https://www.jsonrpc.org/specification#error_object
+RPC_ERRORS = {
+    # Invalid JSON was received. An error occurred on the server while parsing the JSON text.
+    -32700: 'Parse error',
+    # The JSON sent is not a valid Request object.
+    -32600: 'Invalid Request',
+    # The method does not exist / is not available.
+    -32601: 'Method not found',
+    # Invalid method parameter(s).
+    -32602: 'Invalid params',
+    # Internal JSON-RPC error.
+    -32603: 'Internal error',
+    # Reserved for implementation-defined server-errors.
+    -32000: 'Server error',
+}
 
 log = logging.getLogger(__name__)
 
@@ -68,336 +62,185 @@ class JSONRPCService(object):
     """
 
     def __init__(self):
+        """
+        Initialize a new JSONRPCService object.
+        """
+        # A mapping of method name to python function and json-schema
         self.method_data = {}
 
-    def add(self, f, name=None, schema=None):
+    def add(self, func: Callable, name: str = None, schema: Optional[dict] = None):
         """
-        Adds a new method to the jsonrpc service.
+        Adds a new method to the jsonrpc service. If name argument is not
+        given, function's own name will be used.
 
-        Arguments:
-        f -- the remote function
-        name -- name of the method in the jsonrpc service
-        types -- list or dictionary of the types of accepted arguments
-        required -- list of required keyword arguments
+        Example:
+            service.add(myfunc, name='my_function', schema=param_schema)
 
-        If name argument is not given, function's own name will be used.
-
-        Argument types must be a list if positional arguments are used or a dictionary if
-        keyword arguments are used in the method in question.
-
-        Argument required MUST be used only for methods requiring keyword arguments, not for
-        methods accepting positional arguments.
+        Args:
+            func (function): required python function handler to call for this method
+            name (str): optional name of the method (defaults to the function's name)
+            schema (dict): optional JSON-Schema for parameter validation
         """
-        if name is None:
-            fname = f.__name__  # Register the function using its own name.
-        else:
-            fname = name
-        self.method_data[fname] = {'method': f, 'schema': schema}
+        fname = name if name else func.__name__
+        if fname in self.method_data:
+            raise exceptions.DuplicateMethodName(fname)
+        self.method_data[fname] = {'method': func, 'schema': schema}
 
-    def call(self, jsondata, metadata=None):
+    def call(self, jsondata: str, metadata=None) -> str:
         """
-        Calls jsonrpc service's method and returns its return value in a JSON string or None
-        if there is none.
+        Calls jsonrpc service's method and returns its return value in a JSON
+        string or None if there is none.
 
-        Arguments:
-        jsondata -- remote method call in jsonrpc format
-        metadata -- optional additional data for the function call (eg. an auth token)
+        Args:
+           jsondata: JSON-RPC 2.0 request body (raw string)
+           metadata: any additional object to pass along to the handler function as the second arg
+
+        Returns:
+            The JSON-RPC 2.0 response as a raw JSON string.
+            Will not throw an exception.
         """
         try:
             request_data = json.loads(jsondata)
         except ValueError as err:
-            err = self._get_err(ParseError(data={'details': str(err)}))
-            return json.dumps(err)
+            resp = self._err_response(-32700, err_data={'details': str(err)}, always_respond=True)
+            return json.dumps(resp)
         result = self.call_py(request_data, metadata)
         if result is not None:
             return json.dumps(result)
-        return None
 
-    def call_py(self, rdata, metadata=None):
+    def call_py(self, req_data, metadata=None) -> Optional[Union[dict, List[dict]]]:
         """
-        Calls jsonrpc service's method and returns its return value in python object format or
-        None if there is none.
+        Call a method in the service and return the RPC response. This behaves
+        the same as call() except that the request and response are python
+        objects instead of JSON strings.
 
-        This method is same as call() except the return value is a python object instead of
-        JSON string. This method is mainly only useful for debugging purposes.
+        Args:
+            req_data: JSON-RPC 2.0 request payload as a python object
+            metadata: Any optional additional data to send to the handler function
+
+        Returns:
+            The JSON-RPC 2.0 response as a python object.
+            Returns None if the request is a notification.
+            Will not throw an exception.
         """
-        # set some default values for error handling
-        request = self._get_default_vals()
+        if isinstance(req_data, list):
+            if len(req_data) == 0:
+                err_data = {'details': 'Batch request array is empty'}
+                return self._err_response(-32600, err_data=err_data, always_respond=True)
+            return self._call_batch(req_data, metadata)
+        return self._call_single(req_data, metadata)
+
+    def _call_single(self, req_data: dict, metadata) -> dict:
+        """
+        Make a single method call (used in call_py() and _call_batch())
+        """
         try:
-            if isinstance(rdata, dict) and rdata:
-                # It's a single request.
-                self._fill_request(request, rdata)
-                return self._handle_request(request, metadata)
-            elif isinstance(rdata, list):
-                if not rdata:
-                    # Empty list
-                    log.exception('Raising InvalidRequestError for empty batch call')
-                    data = {'details': 'Batch request array is empty'}
-                    raise InvalidRequestError(data=data)
-                # It's a batch.
-                requests = []
-                responds = []
-                for rdata_ in rdata:
-                    # set some default values for error handling
-                    request_ = self._get_default_vals()
-                    try:
-                        self._fill_request(request_, rdata_)
-                    except InvalidRequestError as e:
-                        err = self._get_err(e, request_['id'])
-                        if err:
-                            responds.append(err)
-                        continue
-                    except JSONRPCError as e:
-                        err = self._get_err(e, request_['id'])
-                        if err:
-                            responds.append(err)
-                        continue
-                    requests.append(request_)
-                for request_ in requests:
-                    try:
-                        respond = self._handle_request(request_, metadata)
-                    except JSONRPCError as e:
-                        respond = self._get_err(e, request_['id'], request_['jsonrpc'])
-                    # Don't respond to notifications
-                    if respond is not None:
-                        responds.append(respond)
-                if responds:
-                    return responds
-                # Nothing to respond.
-                return None
-            else:
-                # empty dict, list or wrong type
-                log.exception(f'Raising InvalidRequestError for: {rdata}')
-                raise InvalidRequestError
-        except InvalidRequestError as e:
-            return self._get_err(e, request['id'])
-        except JSONRPCError as e:
-            return self._get_err(e, request['id'], request['jsonrpc'])
-        except jsonschema.exceptions.ValidationError as e:
-            return self._invalid_params_response(e, request['id'], request['jsonrpc'])
-
-    def _invalid_params_response(self, err, id=None, jsonrpc=DEFAULT_JSONRPC):
-        """
-        Returns an error message for a jsonschema validation error on the params.
-        """
-        resp = {'id': id}
-        self._fill_ver(jsonrpc, resp)
-        resp['error'] = {
-            'message': 'Invalid params',
-            'data': {
-                'details': err.message,
-            },
-            'code': -32602,
-        }
-        return resp
-
-    def _get_err(self, e, id=None, jsonrpc=DEFAULT_JSONRPC):
-        """
-        Returns jsonrpc error message.
-        """
-        # Do not respond to notifications when the request is valid.
-        if id is None and not isinstance(e, ParseError) and not isinstance(e, InvalidRequestError):
-            return None
-        respond = {'id': id}
-        self._fill_ver(jsonrpc, respond)
-        respond['error'] = e.dumps()
-        return respond
-
-    def _fill_ver(self, ver, respond):
-        """
-        Fills version information to the respond from the internal tuple version.
-        """
-        if ver == (2, 0):
-            respond['jsonrpc'] = '2.0'
-        elif ver == (1, 1):
-            respond['version'] = '1.1'
-        # No other case possible; _get_jsonrpc will have raised an error or set a default
-
-    def _get_jsonrpc(self, rdata):
-        """
-        Returns jsonrpc request's jsonrpc value as a tuple of integers.
-
-        InvalidRequestError will be raised if the jsonrpc value has invalid value.
-        """
-        if rdata.get('jsonrpc') == '2.0':
-            # v2.0
-            return (2, 0)
-        elif rdata.get('version') == '1.1':
-            # v1.1
-            return (1, 1)
-        # Invalid or missing version
-        if 'jsonrpc' in rdata or 'version' in rdata:
-            log.exception(f'Raising InvalidRequestError for invalid version in {rdata}')
-            raise InvalidRequestError(data={'details': 'Invalid JSON-RPC version'})
-        else:
-            log.exception(f'Raising InvalidRequestError for missing version in {rdata}')
-            raise InvalidRequestError(data={'details': 'Missing JSON-RPC version'})
-
-    def _get_id(self, rdata):
-        """
-        Returns jsonrpc request's id value or None if there is none.
-
-        InvalidRequestError will be raised if the id value has invalid type.
-        """
-        if 'id' in rdata:
-            if type(rdata['id']) in (str, int, float):
-                return rdata['id']
-            else:
-                # invalid type
-                log.exception(f'Raising InvalidRequestError for invalid `id` type in {rdata}')
-                data = {'details': 'Invalid type for the `id` field'}
-                raise InvalidRequestError(data=data)
-        else:
-            # It's a notification.
-            return None
-
-    def _get_method(self, rdata):
-        """
-        Returns jsonrpc request's method value.
-
-        InvalidRequestError will be raised if it's missing or is wrong type.
-        MethodNotFoundError will be raised if a method with given method name does not exist.
-        """
-        if 'method' in rdata:
-            if not isinstance(rdata['method'], str):
-                log.exception(f'Raising InvalidRequestError, invalid method type in {rdata}')
-                data = {'details': 'Invalid type for the "method" field; must be a string'}
-                raise InvalidRequestError(data=data)
-        else:
-            log.exception(f'Raising InvalidRequestError, missing method in {rdata}')
-            data = {'details': 'The required "method" field is missing'}
-            raise InvalidRequestError(data=data)
-        if rdata['method'] not in self.method_data:
-            data = {'available_methods': list(self.method_data.keys())}
-            raise MethodNotFoundError(data=data)
-        return rdata['method']
-
-    def _get_params(self, rdata):
-        """
-        Returns a list of jsonrpc request's method parameters.
-        """
-        if 'params' in rdata:
-            if type(rdata['params']) in (dict, list, None):
-                return rdata['params']
-            else:
-                # wrong type
-                log.exception(f'Raising InvalidRequestError for: {rdata}')
-                data = {'details': 'Invalid type for the `params` field'}
-                raise InvalidRequestError(data=data)
-        else:
-            return None
-
-    def _fill_request(self, request, rdata):
-        """Fills request with data from the jsonrpc call."""
-        if not isinstance(rdata, dict):
-            log.exception(f'Raising InvalidRequestError for: {rdata}')
-            raise InvalidRequestError
-        request['id'] = self._get_id(rdata)
-        request['jsonrpc'] = self._get_jsonrpc(rdata)
-        request['method'] = self._get_method(rdata)
-        request['params'] = self._get_params(rdata)
-
-    def _call_method(self, request, metadata=None):
-        """Calls given method with given params and returns it value."""
-        method = self.method_data[request['method']]['method']
-        schema = self.method_data[request['method']]['schema']
-        params = request['params']
-        if schema:
-            jsonschema.validate(params, schema)
-        result = None
+            jsonschema.validate(req_data, REQUEST_SCHEMA)
+        except jsonschema.exceptions.ValidationError as err:
+            log.exception(f'Invalid JSON-RPC request for {req_data}: {err}')
+            return self._err_response(-32600, req_data,
+                                      err_data={'details': err.message},
+                                      always_respond=True)
+        if req_data['method'] not in self.method_data:
+            # Missing method
+            meths = list(self.method_data.keys())
+            err_data = {'available_methods': meths}
+            return self._err_response(-32601, req_data, err_data=err_data)
+        method = self.method_data[req_data['method']]['method']
+        schema = self.method_data[req_data['method']]['schema']
+        params = req_data.get('params')
+        if schema is not None:
+            try:
+                jsonschema.validate(params, schema)
+            except jsonschema.exceptions.ValidationError as err:
+                # Invalid params error response
+                err_data = {'details': err.message}
+                return self._err_response(-32602, req_data, err_data)
         try:
             result = method(params, metadata)
         except Exception as err:
-            log.exception(f"Method {request['method']} threw an exception: {err}")
             # Exception was raised inside the method.
-            data = {'details': err.__class__.__name__, 'method': request['method']}
+            log.exception(f"Method {req_data['method']} threw an exception: {err}")
+            err_data = {'method': req_data['method']}
             if hasattr(err, 'message'):
-                data['details'] += ': ' + err.message
-            raise ServerError(data=data)
-        return result
-
-    def _handle_request(self, request, metadata=None):
-        """Handles given request and returns its response."""
-        result = self._call_method(request, metadata)
-        # Do not respond to notifications.
-        if request['id'] is None:
+                err_data['details'] = err.message
+            code = -32000  # Server error
+            if hasattr(err, 'jsonrpc_code'):
+                code = err.jsonrpc_code
+                if code > -32000 or code < -32099:
+                    raise exceptions.InvalidServerErrorCode
+            return self._err_response(code, req_data, err_data)
+        _id = self._response_id(req_data)
+        if type(_id) in (str, int):
+            # Return the result in JSON-RPC 2.0 response format
+            return {
+                'id': _id,
+                'jsonrpc': '2.0',
+                'result': result,
+            }
+        else:
+            # Notification request; no results
             return None
-        respond = {}
-        self._fill_ver(request['jsonrpc'], respond)
-        respond['result'] = result
-        respond['id'] = request['id']
-        return respond
 
-    def _get_default_vals(self):
+    def _call_batch(self, req_data: List[dict], metadata) -> Optional[List[dict]]:
         """
-        Returns dictionary containing default jsonrpc request/responds values for
-        error handling purposes.
+        Make many method calls (used in call_py())
         """
-        ver = '.'.join(str(i) for i in DEFAULT_JSONRPC)
-        return {"jsonrpc": ver, "id": None}
+        results = []
+        for req in req_data:
+            resp = self._call_single(req, metadata)
+            # According to the spec, notification requests do not go in the result array
+            if resp is not None:
+                results.append(resp)
+        # Equivalent to something like `return results or None`, but let's be explicit:
+        if len(results) == 0:
+            # Every request was a notification
+            return None
+        else:
+            return results
 
+    def _err_response(self,
+                      code: int,
+                      req_data: Optional[dict] = None,
+                      err_data: Optional[dict] = None,
+                      always_respond: bool = False) -> dict:
+        """
+        Return a JSON-RPC 2.0 error response. The 'message' field is
+        autopopulated from the code based on values from the spec.
 
-class JSONRPCError(Exception):
-    """
-    JSONRPCError class based on the JSON-RPC 2.0 specs.
-    code - number
-    message - string
-    """
-    code = 0
-    message = None
-    data = None
-
-    def __init__(self, data=None):
-        self.data = data
-
-    def dumps(self):
-        """Return the Exception data in a format for JSON-RPC."""
-        error = {
-            'code': self.code,
-            'message': str(self.message),
+        Args:
+            code: JSON-RPC 2.0 error code
+            req_data: Request data as a python object
+            err_data: Optional 'data' field for the error response
+            always_respond: Even if there was no ID in the request, send a response
+        Returns:
+            JSON-RPC 2.0 error response as a python dict
+        """
+        _id = self._response_id(req_data) if req_data else None
+        if _id is None and not always_respond:
+            # Do not return error responses for notifications
+            return None
+        resp = {
+            'jsonrpc': '2.0',
+            'id': _id,
+            'error': {
+                'code': code,
+                'message': RPC_ERRORS[code],
+            }
         }
-        if self.data is not None:
-            error['data'] = self.data
-        return error
+        if err_data:
+            resp['error']['data'] = err_data
+        return resp
 
-
-# ===============================================================================
-# Exceptions
-#
-# The error-codes -32768 .. -32000 (inclusive) are reserved for pre-defined
-# errors.
-#
-# Any error-code within this range not defined explicitly below is reserved
-# for future use
-# ===============================================================================
-
-class ParseError(JSONRPCError):
-    """Invalid JSON. An error occurred on the server while parsing the JSON text."""
-    code = -32700
-    message = 'Parse error'
-
-
-class InvalidRequestError(JSONRPCError):
-    """The received JSON is not a valid JSON-RPC Request."""
-    code = -32600
-    message = 'Invalid Request'
-
-
-class MethodNotFoundError(JSONRPCError):
-    """The requested remote-procedure does not exist / is not available."""
-    code = -32601
-    message = 'Method not found'
-
-
-class InternalError(JSONRPCError):
-    """Internal JSON-RPC error."""
-    code = -32603
-    message = 'Internal error'
-
-
-# -32099..-32000 Server error. Reserved for implementation-defined server-errors.
-
-class ServerError(JSONRPCError):
-    """Generic server error."""
-    code = -32000
-    message = 'Server error'
+    def _response_id(self, req_data):
+        """
+        Get the ID for the response from the request
+        Return None if ID is missing or invalid
+        """
+        _id = None
+        if isinstance(req_data, dict):
+            _id = req_data.get('id')
+        if type(_id) in (str, int):
+            return _id
+        else:
+            return None

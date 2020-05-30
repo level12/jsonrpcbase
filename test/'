@@ -1,7 +1,6 @@
 """
 jsonrpcbase tests
 """
-import pytest
 import jsonrpcbase
 import json
 
@@ -165,16 +164,16 @@ def test_parse_error():
     {
         "jsonrpc": "2.0",
         "method": "subtract",
-        "params": "bar", "baz",
-        "id": 0,
+        "params": "bar", "baz"
     }
     """
     res = s.call(req)
     result = json.loads(res)
     assert result['jsonrpc'] == "2.0"
     assert result['error']['code'] == -32700
+
     assert result['error']['data'] == {
-        'details': "Expecting ':' delimiter: line 5 column 31 (char 93)"
+        'details': "Expecting ':' delimiter: line 6 column 5 (char 98)"
     }
     assert result['id'] is None
 
@@ -256,6 +255,7 @@ def test_server_error():
     assert result['id'] == "1"
     assert result['error']['code'] == -32000
     assert result['error']['message'] == 'Server error'
+    print('result xyz', result)
     errdat = result['error']['data']
     assert errdat['details'] == 'whoops'
     assert errdat['method'] == 'broken_func'
@@ -577,24 +577,3 @@ def test_required_keyword_validation_error():
     assert result['error']['message'] == 'Invalid params'
     assert result['error']['data']['details'] == "'b' is a required property"
     assert result['id'] == "1"
-
-
-def test_duplicate_method_name_err():
-    """
-    Test the error raised when trying to add a pre-existing method name
-    """
-    with pytest.raises(jsonrpcbase.exceptions.DuplicateMethodName) as excinfo:
-        s.add(noop)
-    assert str(excinfo.value) == "Duplicate method name for JSON-RPC service: 'noop'"
-
-
-def test_invalid_server_err_code():
-    """Test the error when a user sets an invalid server error code"""
-    class InvalidServerCode(Exception):
-        jsonrpc_code = -100
-
-    def invalid_server_code(params, meta):
-        raise InvalidServerCode
-    s.add(invalid_server_code)
-    with pytest.raises(jsonrpcbase.exceptions.InvalidServerErrorCode):
-        s.call_py({"method": "invalid_server_code", "jsonrpc": "2.0"})

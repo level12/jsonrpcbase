@@ -1,3 +1,5 @@
 from jsonrpcbase.main import JSONRPCService
+import jsonrpcbase.exceptions as exceptions
 
-__all__ = ['JSONRPCService']
+# Exported names:
+__all__ = ['JSONRPCService', 'exceptions']
