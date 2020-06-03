@@ -1,4 +1,4 @@
-.PHONY: test
+.PHONY: test test-debug publish
 
 test:
 	poetry run flake8 && \
@@ -11,3 +11,7 @@ test-debug:
 		poetry run pytest --cov=./jsonrpcbase --cov-report=xml -vv -x test && \
 		poetry run coverage report && \
 		poetry run coverage html
+
+
+publish:
+	poetry publish --build -vvv
