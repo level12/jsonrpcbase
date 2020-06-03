@@ -68,7 +68,7 @@ class JSONRPCService(object):
         # A mapping of method name to python function and json-schema
         self.method_data = {}
 
-    def add(self, func: Callable, name: str = None, schema: Optional[dict] = None):
+    def add(self, func: Callable, name: Optional[str] = None, schema: Optional[dict] = None):
         """
         Adds a new method to the jsonrpc service. If name argument is not
         given, function's own name will be used.
@@ -77,9 +77,9 @@ class JSONRPCService(object):
             service.add(myfunc, name='my_function', schema=param_schema)
 
         Args:
-            func (function): required python function handler to call for this method
-            name (str): optional name of the method (defaults to the function's name)
-            schema (dict): optional JSON-Schema for parameter validation
+            func: required python function handler to call for this method
+            name: optional name of the method (defaults to the function's name)
+            schema: optional JSON-Schema for parameter validation
         """
         fname = name if name else func.__name__
         if fname in self.method_data:
@@ -134,6 +134,7 @@ class JSONRPCService(object):
         """
         Make a single method call (used in call_py() and _call_batch())
         """
+        # Validate the request body using a json-schema
         try:
             jsonschema.validate(req_data, REQUEST_SCHEMA)
         except jsonschema.exceptions.ValidationError as err:
@@ -141,6 +142,7 @@ class JSONRPCService(object):
             return self._err_response(-32600, req_data,
                                       err_data={'details': err.message},
                                       always_respond=True)
+        # Handle unknown method error
         if req_data['method'] not in self.method_data:
             # Missing method
             meths = list(self.method_data.keys())
@@ -149,6 +151,7 @@ class JSONRPCService(object):
         method = self.method_data[req_data['method']]['method']
         schema = self.method_data[req_data['method']]['schema']
         params = req_data.get('params')
+        # Validate the parameters with the json-schema, if present
         if schema is not None:
             try:
                 jsonschema.validate(params, schema)
@@ -214,7 +217,16 @@ class JSONRPCService(object):
             err_data: Optional 'data' field for the error response
             always_respond: Even if there was no ID in the request, send a response
         Returns:
-            JSON-RPC 2.0 error response as a python dict
+            JSON-RPC 2.0 error response as a python dict.
+
+        ID behavior:
+        - If req_data is None and always_respond is True, then a response is
+          returned with 'id' of null
+        - If req_data is None and always_respond is False, then None is returned
+        - If req_data has a valid ID, then that is returned in the response
+        - If req_data does not have a valid ID and always_respond is True,
+          then 'id' is null in the response
+        - If req_data does not have a valid ID and always_response is False, then None is returned
         """
         _id = self._response_id(req_data) if req_data else None
         if _id is None and not always_respond:
