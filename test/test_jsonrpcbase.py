@@ -34,6 +34,7 @@ def noop(params, meta):
 
 
 def return_meta(params, meta):
+    """Used to test metadata param"""
     return meta
 
 
