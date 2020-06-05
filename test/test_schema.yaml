@@ -1,0 +1,33 @@
+---
+$schema: http://json-schema.org/draft-07/schema
+title: Test service schema
+definitions:
+  methods:
+    posv:
+      # Positional array types test
+      params: {"$ref": "#/definitions/test_array"}
+    keyv:
+      # Named args types test
+      params: {"$ref": "#/definitions/test_object"}
+    echo:
+      # For testing the result validation
+      params:
+        type: object
+        properties:
+          x: {type: [string, integer]}
+      result: {type: integer}
+  test_object:
+    type: object
+    required: [a, c]
+    properties:
+      a: {type: integer}
+      b: {type: boolean}
+      c: {type: number}
+  test_array:
+    type: array
+    items:
+      - type: string
+      - type: integer
+      - type: number
+      - type: boolean
+      - type: boolean

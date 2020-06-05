@@ -4,8 +4,9 @@ jsonrpcbase tests
 import pytest
 import jsonrpcbase
 import json
+import jsonschema
 
-s = jsonrpcbase.JSONRPCService()
+s = jsonrpcbase.JSONRPCService(schema_path='test/test_schema.yaml', development=True)
 
 
 def subtract(params, meta):
@@ -455,17 +456,7 @@ def test_positional_validation():
     """
     Test validation of positional arguments with valid jsonrpc calls.
     """
-    schema = {
-        'type': 'array',
-        'items': [
-            {'type': 'string'},
-            {'type': 'integer'},
-            {'type': 'number'},
-            {'type': 'boolean'},
-            {'type': 'boolean'},
-        ]
-    }
-    s.add(noop, name='posv', schema=schema)
+    s.add(noop, name='posv')
     result = s.call_py({
         "jsonrpc": "2.0",
         "method": "posv",
@@ -481,26 +472,16 @@ def test_positional_validation_error():
     """
     Test error handling of validation of positional arguments with invalid jsonrpc calls.
     """
-    schema = {
-        'type': 'array',
-        'items': [
-            {'type': 'integer'},
-            {'type': 'boolean'},
-            {'type': 'number'},
-        ]
-    }
-    s.add(noop, name='pose', schema=schema)
-    # third argument is str, not float.
     result = s.call_py({
         "jsonrpc": "2.0",
-        "method": "pose",
-        "params": [1, False, "x"],
+        "method": "posv",
+        "params": ["x", 1, 2.0, True, "x"],
         "id": "1",
     })
     assert result['jsonrpc'] == "2.0"
     assert result['error']['code'] == -32602
     assert result['error']['message'] == 'Invalid params'
-    assert result['error']['data']['details'] == "'x' is not of type 'number'"
+    assert result['error']['data']['details'] == "'x' is not of type 'boolean'"
     assert result['id'] == "1"
 
 
@@ -508,15 +489,7 @@ def test_keyword_validation():
     """
     Test validation of keyword arguments with valid jsonrpc calls.
     """
-    schema = {
-        'type': 'object',
-        'properties': {
-            'a': {'type': 'integer'},
-            'b': {'type': 'boolean'},
-            'c': {'type': 'number'},
-        }
-    }
-    s.add(noop, name='keyv', schema=schema)
+    s.add(noop, name='keyv')
     result = s.call_py({
         "jsonrpc": "2.0",
         "method": "keyv",
@@ -528,56 +501,35 @@ def test_keyword_validation():
     assert result['id'] == "1"
 
 
-def test_required_keyword_validation():
-    """
-    Test validation of required keyword arguments with valid jsonrpc calls.
-    """
-    schema = {
-        'type': 'object',
-        'required': ['a', 'c'],
-        'properties': {
-            'a': {'type': 'integer'},
-            'b': {'type': 'boolean'},
-            'c': {'type': 'number'},
-        }
-    }
-    s.add(noop, name='reqv', schema=schema)
-    result = s.call_py({
-        "jsonrpc": "2.0",
-        "method": "reqv",
-        "params": {"a": 1, "c": 6.0},
-        "id": "1",
-    })
-    assert result['jsonrpc'] == "2.0"
-    assert result['result'] is None
-    assert result['id'] == "1"
-
-
 def test_required_keyword_validation_error():
     """
     Test error handling of validation of required keyword arguments with invalid jsonrpc calls.
     """
-    schema = {
-        'type': 'object',
-        'required': ['a', 'b', 'c'],
-        'properties': {
-            'a': {'type': 'integer'},
-            'b': {'type': 'boolean'},
-            'c': {'type': 'number'},
-        }
-    }
-    s.add(noop, name='reqe', schema=schema)
     result = s.call_py({
         "jsonrpc": "2.0",
-        "method": "reqe",
-        "params": {"a": 1, "c": 6.0},
+        "method": "keyv",
+        # Missing required property "c"
+        "params": {"a": 1, "b": 6.0},
         "id": "1"
     })
     assert result['jsonrpc'] == "2.0"
     assert result['error']['code'] == -32602
     assert result['error']['message'] == 'Invalid params'
-    assert result['error']['data']['details'] == "'b' is a required property"
+    assert result['error']['data']['details'] == "'c' is a required property"
     assert result['id'] == "1"
+
+
+def test_result_schema_validation():
+    def echo(params, meta):
+        return params['x']
+    s.add(echo)
+    with pytest.raises(jsonschema.exceptions.ValidationError):
+        result = s.call_py({
+            "jsonrpc": "2.0",
+            "method": "echo",
+            "params": {"x": "hi"}
+        })
+        assert result['error']['message'] == "'x' is not of type integer"
 
 
 def test_duplicate_method_name_err():
@@ -599,3 +551,10 @@ def test_invalid_server_err_code():
     s.add(invalid_server_code)
     with pytest.raises(jsonrpcbase.exceptions.InvalidServerErrorCode):
         s.call_py({"method": "invalid_server_code", "jsonrpc": "2.0"})
+
+
+def test_invalid_service_schema():
+    with pytest.raises(jsonrpcbase.exceptions.InvalidSchemaError):
+        jsonrpcbase.JSONRPCService(schema_path='test/invalid_schema.json')
+    with pytest.raises(jsonrpcbase.exceptions.InvalidSchemaError):
+        jsonrpcbase.JSONRPCService(schema_path='test/xyz.txt')
