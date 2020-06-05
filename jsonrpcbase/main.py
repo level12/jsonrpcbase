@@ -7,11 +7,9 @@ Uses Google Style Python docstrings:
     https://github.com/google/styleguide/blob/gh-pages/pyguide.md#38-comments-and-docstrings
 """
 import json
-import yaml
 import logging
 import jsonschema
-import os
-from typing import Callable, Optional, List, Union
+from typing import Callable, Optional, List, Union, Dict
 
 import jsonrpcbase.exceptions as exceptions
 import jsonrpcbase.utils as utils
@@ -66,6 +64,10 @@ class JSONRPCService(object):
 
     # JSON-Schema for the service
     schema: Optional[dict]
+    # Flag for development mode (validate result schemas)
+    development: bool
+    # Mapping of method name to function handler
+    method_data: Dict[str, Dict[str, Callable]]
 
     def __init__(self,
                  schema_path: Optional[str] = None,
@@ -79,7 +81,7 @@ class JSONRPCService(object):
         """
         if schema_path is not None:
             # Load service schema
-            self.schema = _load_schema(schema_path)
+            self.schema = utils.load_schema(schema_path)
         # A mapping of method name to python function and json-schema
         self.method_data = {}
         self.development = development
@@ -290,32 +292,3 @@ class JSONRPCService(object):
             return _id
         else:
             return None
-
-
-def _load_schema(path: str) -> dict:
-    """
-    Load, parse, and validate a JSON-Schema from a YAML or JSON file path.
-
-    Args:
-        path: file path to a JSON or YAML file
-    Returns:
-        An in-memory, jsonschema-validated python object
-
-    throws InvalidSchemaError
-    """
-    ext = os.path.splitext(path)[1].lower()
-    if ext == '.yaml' or ext == '.yml':
-        with open(path) as fd:
-            schema = yaml.safe_load(fd)
-    elif ext == '.json':
-        with open(path) as fd:
-            schema = json.load(fd)
-    else:
-        msg = f'Service schema must be YAML or JSON; {ext} is invalid'
-        raise exceptions.InvalidSchemaError(msg)
-    # Validate the schema
-    jsonschema.Draft7Validator.check_schema(schema)
-    if 'definitions' not in schema:
-        msg = "No 'definitions' property found for the service schema"
-        raise exceptions.InvalidSchemaError(msg)
-    return schema
