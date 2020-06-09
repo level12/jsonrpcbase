@@ -165,9 +165,10 @@ class JSONRPCService(object):
             jsonschema.validate(req_data, REQUEST_SCHEMA)
         except jsonschema.exceptions.ValidationError as err:
             log.exception(f'Invalid JSON-RPC request for {req_data}: {err}')
-            return self._err_response(-32600, req_data,
-                                      err_data={'details': err.message},
-                                      always_respond=True)
+            data = {
+                'details': err.message,
+            }
+            return self._err_response(-32600, req_data, err_data=data, always_respond=True)
         # Handle unknown method error
         if req_data['method'] not in self.method_data:
             # Missing method
@@ -185,7 +186,7 @@ class JSONRPCService(object):
                 jsonschema.validate(params, schema)
             except jsonschema.exceptions.ValidationError as err:
                 # Invalid params error response
-                err_data = {'details': err.message}
+                err_data = {'details': err.message, 'path': list(err.path)}
                 return self._err_response(-32602, req_data, err_data)
         try:
             result = method(params, metadata)
