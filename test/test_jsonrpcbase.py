@@ -1,12 +1,21 @@
 """
 jsonrpcbase tests
 """
-import pytest
-import jsonrpcbase
 import json
+import jsonrpcbase
 import jsonschema
+import pytest
+import yaml
 
-s = jsonrpcbase.JSONRPCService(schema_path='test/test_schema.yaml', development=True)
+import jsonrpcbase.exceptions as exceptions
+
+_SCHEMA_PATH = 'test/test_schema.yaml'
+_SERVICE_INFO_PATH = 'test/service.json'
+s = jsonrpcbase.JSONRPCService(
+    info=_SERVICE_INFO_PATH,
+    schema=_SCHEMA_PATH,
+    development=True
+)
 
 
 def subtract(params, meta):
@@ -482,6 +491,7 @@ def test_positional_validation_error():
     assert result['error']['code'] == -32602
     assert result['error']['message'] == 'Invalid params'
     assert result['error']['data']['details'] == "'x' is not of type 'boolean'"
+    assert result['error']['data']['path'] == [4]
     assert result['id'] == "1"
 
 
@@ -516,6 +526,7 @@ def test_required_keyword_validation_error():
     assert result['error']['code'] == -32602
     assert result['error']['message'] == 'Invalid params'
     assert result['error']['data']['details'] == "'c' is a required property"
+    assert result['error']['data']['path'] == []
     assert result['id'] == "1"
 
 
@@ -554,7 +565,90 @@ def test_invalid_server_err_code():
 
 
 def test_invalid_service_schema():
-    with pytest.raises(jsonrpcbase.exceptions.InvalidSchemaError):
-        jsonrpcbase.JSONRPCService(schema_path='test/invalid_schema.json')
-    with pytest.raises(jsonrpcbase.exceptions.InvalidSchemaError):
-        jsonrpcbase.JSONRPCService(schema_path='test/xyz.txt')
+    """
+    Test error classes raised when trying to initialize a service with an
+    invalid schema argument.
+    """
+    with pytest.raises(exceptions.InvalidFileType):
+        jsonrpcbase.JSONRPCService(schema='test/xyz.txt', info=_SERVICE_INFO_PATH)
+
+
+def test_invalid_service_info():
+    """
+    Test error classes raised when trying to initialize a service with an
+    invalid schema argument.
+    """
+    with pytest.raises(jsonschema.exceptions.ValidationError):
+        jsonrpcbase.JSONRPCService(schema='test/test_schema.yaml', info={'x': 1})
+
+
+def test_service_discovery_ok():
+    """
+    Test valid service discovery response.
+    """
+    res = s.call_py({
+        "jsonrpc": "2.0",
+        "id": 0,
+        "method": "rpc.discover",
+    })
+    with open(_SCHEMA_PATH) as fd:
+        service_schema = yaml.safe_load(fd)
+    with open(_SERVICE_INFO_PATH) as fd:
+        info = yaml.safe_load(fd)
+    assert res['jsonrpc'] == '2.0'
+    assert res['id'] == 0
+    assert res['result']['schema'] == service_schema
+    assert res['result']['service_info'] == info
+
+
+# TODO invalid service discovery params
+
+def test_service_discovery_invalid_params():
+    """
+    Test valid service discovery response.
+    """
+    res = s.call_py({
+        "jsonrpc": "2.0",
+        "id": 0,
+        "method": "rpc.discover",
+        "params": ["x"],
+    })
+    assert res['jsonrpc'] == '2.0'
+    assert res['id'] == 0
+    assert 'result' not in res
+
+
+def test_service_info():
+    """Test valid load of service info"""
+    with open(_SERVICE_INFO_PATH) as fd:
+        info = yaml.safe_load(fd)
+    assert s.info == info
+
+
+def test_invalid_service_info_path():
+    """Test valid load of service info"""
+    with pytest.raises(exceptions.InvalidFileType):
+        jsonrpcbase.JSONRPCService(schema='test/test_schema.yaml', info='xyz.txt')
+
+
+def test_empty_schema():
+    """Test initialization of service with no schema"""
+    s = jsonrpcbase.JSONRPCService(info=_SERVICE_INFO_PATH)
+    assert s.schema['$schema'] == "http://json-schema.org/draft-07/schema#"
+    assert s.schema['definitions'] == {"methods": {}}
+
+
+def test_override_discover_method():
+    """Test the error case where the user tries to override rpc.discover."""
+    schema = {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "definitions": {
+            "methods": {
+                "rpc.discover": {
+                    "params": {"type": "null"}
+                }
+            }
+        }
+    }
+    with pytest.raises(exceptions.InvalidSchemaError):
+        jsonrpcbase.JSONRPCService(info=_SERVICE_INFO_PATH, schema=schema)

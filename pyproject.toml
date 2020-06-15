@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "kbase_jsonrpcbase"
-version = "0.3.0-alpha3"
+version = "0.3.0-alpha4"
 description = "Simple JSON-RPC service without transport layer"
 authors = []
 license = "MIT"

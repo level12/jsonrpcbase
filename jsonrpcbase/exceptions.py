@@ -4,9 +4,8 @@ Exception classes
 
 
 class JSONRPCBaseError(RuntimeError):
-    def __init__(self, name):
-        self.name = name
-        self.message = f"Duplicate method name for JSON-RPC service: '{self.name}'"
+    def __init__(self, message):
+        self.message = message
         super().__init__(self.message)
 
     def __str__(self):
@@ -14,13 +13,20 @@ class JSONRPCBaseError(RuntimeError):
 
 
 class InvalidSchemaError(JSONRPCBaseError):
+    """Invalid JSON-Schema data."""
     pass
 
 
-class InvalidServerErrorCode(RuntimeError):
-    # TODO make custom message and inherit from JSONRPCBaseError
-    message = "Invalid server error code; must be in the range -32000 to -32099."
+class InvalidServerErrorCode(JSONRPCBaseError):
+    """Invalid custom server error code (must be -32000 - -32099)."""
+    pass
 
 
 class DuplicateMethodName(JSONRPCBaseError):
+    """User tried to register two methods of the same name to the same service."""
+    pass
+
+
+class InvalidFileType(JSONRPCBaseError):
+    """Invalid file extension"""
     pass

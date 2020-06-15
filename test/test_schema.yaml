@@ -3,6 +3,29 @@ $schema: http://json-schema.org/draft-07/schema
 title: Test service schema
 definitions:
   methods:
+    subtract:
+      params:
+        type: array
+        minLength: 2
+        maxLength: 2
+        items: {type: integer}
+    kwargs_subtract:
+      params:
+        type: object
+        required: [a, b]
+        properties:
+          a: {type: integer}
+          b: {type: integer}
+    square:
+      params:
+        type: array
+        minLength: 1
+        maxLength: 1
+        items: {type: integer}
+    noop:
+      params: {type: [array, object, "null"]}
+    broken_func:
+      params: {type: [array, object, "null"]}
     posv:
       # Positional array types test
       params: {"$ref": "#/definitions/test_array"}
